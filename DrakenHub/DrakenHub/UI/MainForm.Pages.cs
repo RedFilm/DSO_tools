@@ -435,9 +435,24 @@ internal sealed partial class MainForm
         var fast = UiFactory.Btn("", BtnKind.Primary);
         BindLaunchButton(fast, () => fm.FastMountHotkey, v => fm.FastMountHotkey = v, "fastmount", "fastmount");
         control.Controls.Add(UiFactory.EqualRow(cape, mount, fast));
+
+        var tab = UiFactory.Combo(Enumerable.Range(1, 9).Select(i => i.ToString()).ToArray());
+        tab.SelectedIndex = Math.Clamp(fm.CapeTab - 1, 0, 8);
+        tab.SelectedIndexChanged += (_, _) =>
+        {
+            fm.CapeTab = tab.SelectedIndex + 1;
+            Persist();
+        };
+        var tabLabel = UiFactory.Lbl(_loc.T("tab"));
+        control.Controls.Add(UiFactory.FieldRow(tabLabel, tab, 90));
+
         var controlSec = UiFactory.Section(_loc.T("section.control"), control, out var controlTitle);
         UiFactory.Add(stack, controlSec);
-        _refreshAllLabels += () => controlTitle.Text = _loc.T("section.control");
+        _refreshAllLabels += () =>
+        {
+            controlTitle.Text = _loc.T("section.control");
+            tabLabel.Text = _loc.T("tab");
+        };
 
         var settings = UiFactory.VStack();
         var track = UiFactory.Slider(1, 200, fm.ClickDelayMs);

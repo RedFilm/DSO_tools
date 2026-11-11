@@ -131,6 +131,7 @@ public sealed class AutoClickerSettings
 public sealed class FastMountSettings
 {
     public CellRef? CapeCell { get; set; }
+    public int CapeTab { get; set; } = 1;
     public string? MountHotkey { get; set; }
     public string? FastMountHotkey { get; set; }
     public int ClickDelayMs { get; set; } = 30;

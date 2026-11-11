@@ -138,9 +138,10 @@ internal sealed class MacroRunner
             var invKey = inv.InventoryHotkey ?? s.GearSwap.InventoryHotkey;
             var delay = Math.Max(10, fm.ClickDelayMs);
 
-            // 1) Open inventory and equip mount cape
+            // 1) Open inventory, switch to cape tab, equip mount cape
             Press(invKey);
             await Delay(delay * 2, token);
+            await SwitchCapeTab(fm, inv, delay, token);
             await ClickCape(fm, inv, delay, token);
 
             // 2) Summon mount (inventory stays open — cape slot now holds the original)
@@ -174,6 +175,7 @@ internal sealed class MacroRunner
             await Delay(delay, token);
             Press(inv.InventoryHotkey);
             await Delay(delay * 2, token);
+            await SwitchCapeTab(fm, inv, delay, token);
             await ClickCape(fm, inv, delay, token);
         });
     }
@@ -346,6 +348,12 @@ internal sealed class MacroRunner
     {
         var p = InventoryLayout.TabCenter(inv, index);
         if (p != null) _input.LeftClick(p.Value.X, p.Value.Y);
+    }
+
+    private async Task SwitchCapeTab(FastMountSettings fm, InventorySettings inv, int delay, CancellationToken token)
+    {
+        ClickTab(inv, Math.Max(0, fm.CapeTab - 1));
+        await Delay(delay, token);
     }
 
     private async Task ClickCape(FastMountSettings fm, InventorySettings inv, int delay, CancellationToken token)
