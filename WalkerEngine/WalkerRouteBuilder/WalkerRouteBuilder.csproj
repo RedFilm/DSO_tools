@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net9.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWindowsForms>true</UseWindowsForms>
+    <RootNamespace>WalkerRouteBuilder</RootNamespace>
+    <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\WalkerEngine\WalkerEngine.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="follow-config.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="follow-config.secrets.json.example" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>

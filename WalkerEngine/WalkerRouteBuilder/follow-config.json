@@ -1,0 +1,107 @@
+{
+  "captureIntervalMilliseconds": 250,
+  "startDelayMilliseconds": 3000,
+  "focusSettleMilliseconds": 80,
+  "gameWindowTitleContains": "Drakensang Online",
+  "window": {
+    "clientX": 0,
+    "clientY": 0,
+    "clientWidth": 1024,
+    "clientHeight": 722
+  },
+  "mapInClient": {
+    "x": 30,
+    "y": 69,
+    "width": 360,
+    "height": 320
+  },
+  "mapRegion": {
+    "x": 0,
+    "y": 0,
+    "width": 0,
+    "height": 0
+  },
+  "view": {
+    "usePrimaryScreen": true,
+    "x": 0,
+    "y": 0,
+    "width": 2560,
+    "height": 1440
+  },
+  "character": {
+    "absoluteX": null,
+    "absoluteY": null,
+    "offsetFromCenterX": 0,
+    "offsetFromCenterY": 0
+  },
+  "routeFile": "",
+  "lookAheadPixels": 80,
+  "rejoinLookAheadPixels": 28,
+  "correctionDistancePixels": 10,
+  "arrivalDistancePixels": 4,
+  "stuckMovePixels": 2,
+  "stuckSampleCount": 3,
+  "stuckRecoveryMilliseconds": 2000,
+  "stuckRecoveryShiftPixels": 8,
+  "stuckRecoveryKeys": [],
+  "headingToleranceDegrees": 55,
+  "clickDistancePixels": 180,
+  "clickHoldMilliseconds": 40,
+  "clickMarginPixels": 12,
+  "invertX": false,
+  "invertY": false,
+  "rotationDegrees": 0,
+  "stopWhenArrived": true,
+  "antagonistPauseMilliseconds": 2000,
+  "wallClearancePixels": 6,
+  "keys": [
+    {
+      "key": "D1",
+      "intervalMilliseconds": 300
+    },
+    {
+      "key": "D3",
+      "intervalMilliseconds": 1000
+    },
+    {
+      "key": "D4",
+      "intervalMilliseconds": 6000
+    }
+  ],
+  "pressKeys": true,
+  "hasMapInClient": true,
+  "restart": {
+    "enabled": false,
+    "minimapLossMilliseconds": 20000,
+    "maxAttempts": 3,
+    "executablePath": "C:\\Program Files (x86)\\Drakensang Online\\thinclient.exe",
+    "executableArguments": "-x86_64",
+    "processName": "thinclient",
+    "username": "_-SanTacLauS-_",
+    "password": "Garaev1990",
+    "server": "Grimmag",
+    "servers": [
+      { "name": "Grimmag", "x": 0.82, "y": 0.30 },
+      { "name": "Heredur", "x": 0.82, "y": 0.36 },
+      { "name": "Werian", "x": 0.82, "y": 0.42 },
+      { "name": "Harold", "x": 0.82, "y": 0.48 }
+    ],
+    "launcherWindow": {
+      "clientX": 40,
+      "clientY": 40,
+      "clientWidth": 900,
+      "clientHeight": 650
+    },
+    "usernameX": 0.78,
+    "usernameY": 0.30,
+    "passwordX": 0.78,
+    "passwordY": 0.38,
+    "characterX": 0.88,
+    "characterY": 0.22,
+    "startGameX": 0.88,
+    "startGameY": 0.92,
+    "stepTimeoutMilliseconds": 90000,
+    "pollMilliseconds": 500,
+    "clickDelayMilliseconds": 300
+  }
+}

@@ -1,0 +1,14 @@
+C:\Users\m0nte\source\repos\DrakenHub\DrakenHub\bin\Release\net9.0-windows\DrakenHub.exe
+C:\Users\m0nte\source\repos\DrakenHub\DrakenHub\bin\Release\net9.0-windows\DrakenHub.deps.json
+C:\Users\m0nte\source\repos\DrakenHub\DrakenHub\bin\Release\net9.0-windows\DrakenHub.runtimeconfig.json
+C:\Users\m0nte\source\repos\DrakenHub\DrakenHub\bin\Release\net9.0-windows\DrakenHub.dll
+C:\Users\m0nte\source\repos\DrakenHub\DrakenHub\bin\Release\net9.0-windows\DrakenHub.pdb
+C:\Users\m0nte\source\repos\DrakenHub\DrakenHub\obj\Release\net9.0-windows\DrakenHub.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\m0nte\source\repos\DrakenHub\DrakenHub\obj\Release\net9.0-windows\DrakenHub.AssemblyInfoInputs.cache
+C:\Users\m0nte\source\repos\DrakenHub\DrakenHub\obj\Release\net9.0-windows\DrakenHub.AssemblyInfo.cs
+C:\Users\m0nte\source\repos\DrakenHub\DrakenHub\obj\Release\net9.0-windows\DrakenHub.csproj.CoreCompileInputs.cache
+C:\Users\m0nte\source\repos\DrakenHub\DrakenHub\obj\Release\net9.0-windows\DrakenHub.dll
+C:\Users\m0nte\source\repos\DrakenHub\DrakenHub\obj\Release\net9.0-windows\refint\DrakenHub.dll
+C:\Users\m0nte\source\repos\DrakenHub\DrakenHub\obj\Release\net9.0-windows\DrakenHub.pdb
+C:\Users\m0nte\source\repos\DrakenHub\DrakenHub\obj\Release\net9.0-windows\DrakenHub.genruntimeconfig.cache
+C:\Users\m0nte\source\repos\DrakenHub\DrakenHub\obj\Release\net9.0-windows\ref\DrakenHub.dll

@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "loop": false,
+  "steps": [
+    {
+      "scenarioFile": "scenarios\\\u041F\u0440\u043E\u0431\u0435\u0433 \u041A\u0438\u043D\u0433\u0441\u0445\u0438\u043B\u043B-003.json",
+      "pauseAfterMilliseconds": 0
+    },
+    {
+      "scenarioFile": "scenarios\\003\\\u0424\u0430\u0440\u043C \u0436\u0435\u043C\u0430 003.json",
+      "pauseAfterMilliseconds": 0
+    }
+  ]
+}

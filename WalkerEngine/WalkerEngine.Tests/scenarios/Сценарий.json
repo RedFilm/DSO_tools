@@ -1,0 +1,79 @@
+{
+  "version": 2,
+  "mapFile": "C:\\Users\\m0nte\\source\\repos\\WalkerEngine\\WalkerEngine.Tests\\003.png",
+  "loop": true,
+  "pressKeys": false,
+  "blocks": [
+    {
+      "type": "followRoute",
+      "travel": "vectors",
+      "delayMilliseconds": 0,
+      "anchors": []
+    },
+    {
+      "type": "repeatWhileSkull",
+      "blocks": [
+        {
+          "type": "followRoute",
+          "travel": "shortest",
+          "delayMilliseconds": 2000,
+          "anchors": [
+            {
+              "source": "player",
+              "x": 0,
+              "y": 0,
+              "keys": null
+            },
+            {
+              "source": "skull",
+              "x": 0,
+              "y": 0,
+              "keys": null
+            }
+          ]
+        },
+        {
+          "type": "lockOnTarget",
+          "radiusPixels": 80,
+          "keys": [
+            {
+              "key": "D1",
+              "intervalMilliseconds": 300
+            },
+            {
+              "key": "D3",
+              "intervalMilliseconds": 1000
+            },
+            {
+              "key": "D4",
+              "intervalMilliseconds": 6000
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "followRoute",
+      "travel": "shortest",
+      "delayMilliseconds": 0,
+      "anchors": [
+        {
+          "source": "player",
+          "x": 0,
+          "y": 0,
+          "keys": null
+        },
+        {
+          "source": "routeStart",
+          "x": 0,
+          "y": 0,
+          "keys": null
+        }
+      ]
+    },
+    {
+      "type": "playSequence",
+      "clicks": []
+    }
+  ]
+}

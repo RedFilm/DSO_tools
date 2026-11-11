@@ -1,0 +1,35 @@
+{
+  "maps": [
+    {
+      "image": "maps\\003.png",
+      "source": null,
+      "scenarios": null
+    },
+    {
+      "image": "maps\\\u0412\u043E\u0440\u043E\u043D\u0438\u0439 \u0437\u0430\u043C\u043E\u043A.png",
+      "source": null,
+      "scenarios": null
+    },
+    {
+      "image": "maps\\\u041A\u0438\u043D\u0433\u0441\u0445\u0438\u043B\u043B.png",
+      "source": null,
+      "scenarios": null
+    }
+  ],
+  "scenarios": [
+    {
+      "name": "\u0424\u0430\u0440\u043C \u0436\u0435\u043C\u0430 003",
+      "file": "scenarios\\003\\\u0424\u0430\u0440\u043C \u0436\u0435\u043C\u0430 003.json"
+    },
+    {
+      "name": "\u041F\u0440\u043E\u0431\u0435\u0433 \u041A\u0438\u043D\u0433\u0441\u0445\u0438\u043B\u043B-003",
+      "file": "scenarios\\\u041F\u0440\u043E\u0431\u0435\u0433 \u041A\u0438\u043D\u0433\u0441\u0445\u0438\u043B\u043B-003.json"
+    }
+  ],
+  "chains": [
+    {
+      "name": "\u0422\u0435\u0441\u0442",
+      "file": "chains\\\u0426\u0435\u043F\u043E\u0447\u043A\u0430 1.json"
+    }
+  ]
+}

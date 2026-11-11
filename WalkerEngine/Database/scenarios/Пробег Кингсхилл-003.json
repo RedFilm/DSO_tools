@@ -1,0 +1,340 @@
+{
+  "version": 2,
+  "mapFile": "maps\\\u0412\u043E\u0440\u043E\u043D\u0438\u0439 \u0437\u0430\u043C\u043E\u043A.png",
+  "maps": [
+    "maps\\\u041A\u0438\u043D\u0433\u0441\u0445\u0438\u043B\u043B.png",
+    "maps\\\u0412\u043E\u0440\u043E\u043D\u0438\u0439 \u0437\u0430\u043C\u043E\u043A.png"
+  ],
+  "loop": false,
+  "pressKeys": true,
+  "blocks": [
+    {
+      "type": "followRoute",
+      "travel": "vectors",
+      "delayMilliseconds": 0,
+      "chaseLostMilliseconds": 1500,
+      "anchors": [
+        {
+          "source": "fixed",
+          "x": 0.4688374897432045,
+          "y": 0.5870782852172851,
+          "keys": null,
+          "wait": "timed",
+          "waitMilliseconds": 2000
+        },
+        {
+          "source": "fixed",
+          "x": 0.47386923344177606,
+          "y": 0.5326019287109375,
+          "keys": null,
+          "wait": "timed",
+          "waitMilliseconds": 2000
+        },
+        {
+          "source": "fixed",
+          "x": 0.5506031555536937,
+          "y": 0.47945427894592285,
+          "keys": null,
+          "wait": "timed",
+          "waitMilliseconds": 2000
+        },
+        {
+          "source": "fixed",
+          "x": 0.6134997937806259,
+          "y": 0.504699420928955,
+          "keys": null,
+          "wait": "timed",
+          "waitMilliseconds": 2000
+        },
+        {
+          "source": "fixed",
+          "x": 0.7153923440967086,
+          "y": 0.40371880531311033,
+          "keys": null,
+          "wait": "timed",
+          "waitMilliseconds": 2000
+        },
+        {
+          "source": "fixed",
+          "x": 0.7412447054710614,
+          "y": 0.4009942293167114,
+          "keys": null,
+          "wait": "timed",
+          "waitMilliseconds": 2000
+        },
+        {
+          "source": "fixed",
+          "x": 0.7819123578494822,
+          "y": 0.3669028043746948,
+          "keys": null,
+          "wait": "timed",
+          "waitMilliseconds": 2000
+        },
+        {
+          "source": "fixed",
+          "x": 0.8393635044436483,
+          "y": 0.37031195163726804,
+          "keys": null,
+          "wait": "timed",
+          "waitMilliseconds": 2000
+        },
+        {
+          "source": "fixed",
+          "x": 0.8664753027921598,
+          "y": 0.34781157970428467,
+          "keys": null,
+          "wait": "timed",
+          "waitMilliseconds": 2000
+        }
+      ],
+      "routeFile": "routes\\\u041A\u0438\u043D\u0433\u0441\u0445\u0438\u043B\u043B\\\u041F\u0440\u043E\u0431\u0435\u0433 \u041A\u0438\u043D\u0433\u0441\u0445\u0438\u043B\u043B-003 1.route.json",
+      "mapFile": "maps\\\u041A\u0438\u043D\u0433\u0441\u0445\u0438\u043B\u043B.png",
+      "pauseAfterMilliseconds": 0
+    },
+    {
+      "type": "enterDoor",
+      "difficulty": 1,
+      "pauseAfterMilliseconds": 0
+    },
+    {
+      "type": "followRoute",
+      "travel": "vectors",
+      "delayMilliseconds": 0,
+      "chaseLostMilliseconds": 1500,
+      "anchors": [
+        {
+          "source": "fixed",
+          "x": 0.2228807848553325,
+          "y": 0.846439280408494,
+          "keys": null,
+          "wait": "timed",
+          "waitMilliseconds": 2000
+        },
+        {
+          "source": "fixed",
+          "x": 0.35036692508431366,
+          "y": 0.6947928354249778,
+          "keys": null,
+          "wait": "timed",
+          "waitMilliseconds": 2000
+        },
+        {
+          "source": "fixed",
+          "x": 0.39676555367403255,
+          "y": 0.6825028006912123,
+          "keys": [
+            {
+              "key": "D1",
+              "intervalMilliseconds": 500
+            }
+          ],
+          "wait": "timed",
+          "waitMilliseconds": 2000
+        },
+        {
+          "source": "fixed",
+          "x": 0.4320355348808821,
+          "y": 0.723096861061475,
+          "keys": [
+            {
+              "key": "D1",
+              "intervalMilliseconds": 500
+            }
+          ],
+          "wait": "timed",
+          "waitMilliseconds": 2000
+        },
+        {
+          "source": "fixed",
+          "x": 0.4603518996127816,
+          "y": 0.6957015450119127,
+          "keys": [
+            {
+              "key": "D1",
+              "intervalMilliseconds": 500
+            }
+          ],
+          "wait": "timed",
+          "waitMilliseconds": 2000
+        },
+        {
+          "source": "fixed",
+          "x": 0.4554232220317042,
+          "y": 0.6615010795863807,
+          "keys": [
+            {
+              "key": "D1",
+              "intervalMilliseconds": 500
+            }
+          ],
+          "wait": "timed",
+          "waitMilliseconds": 2000
+        },
+        {
+          "source": "fixed",
+          "x": 0.44990965377452763,
+          "y": 0.6413238200735538,
+          "keys": [
+            {
+              "key": "D1",
+              "intervalMilliseconds": 500
+            }
+          ],
+          "wait": "timed",
+          "waitMilliseconds": 2000
+        },
+        {
+          "source": "fixed",
+          "x": 0.42556465503781343,
+          "y": 0.6102859280633588,
+          "keys": [
+            {
+              "key": "D1",
+              "intervalMilliseconds": 500
+            }
+          ],
+          "wait": "timed",
+          "waitMilliseconds": 2000
+        },
+        {
+          "source": "fixed",
+          "x": 0.4686242480610692,
+          "y": 0.5604189067867631,
+          "keys": [
+            {
+              "key": "D1",
+              "intervalMilliseconds": 500
+            }
+          ],
+          "wait": "timed",
+          "waitMilliseconds": 2000
+        },
+        {
+          "source": "fixed",
+          "x": 0.5473460263984148,
+          "y": 0.508268045195451,
+          "keys": [
+            {
+              "key": "D1",
+              "intervalMilliseconds": 500
+            }
+          ],
+          "wait": "timed",
+          "waitMilliseconds": 2000
+        },
+        {
+          "source": "fixed",
+          "x": 0.583332150481468,
+          "y": 0.5464174527648493,
+          "keys": [
+            {
+              "key": "D1",
+              "intervalMilliseconds": 500
+            }
+          ],
+          "wait": "timed",
+          "waitMilliseconds": 2000
+        },
+        {
+          "source": "fixed",
+          "x": 0.6180330764415652,
+          "y": 0.5040872993198693,
+          "keys": [
+            {
+              "key": "D1",
+              "intervalMilliseconds": 500
+            }
+          ],
+          "wait": "timed",
+          "waitMilliseconds": 2000
+        },
+        {
+          "source": "fixed",
+          "x": 0.6544475998989371,
+          "y": 0.5464174527648493,
+          "keys": [
+            {
+              "key": "D1",
+              "intervalMilliseconds": 500
+            }
+          ],
+          "wait": "timed",
+          "waitMilliseconds": 2000
+        },
+        {
+          "source": "fixed",
+          "x": 0.7439844885537791,
+          "y": 0.4476470406173814,
+          "keys": [
+            {
+              "key": "D1",
+              "intervalMilliseconds": 500
+            }
+          ],
+          "wait": "timed",
+          "waitMilliseconds": 2000
+        },
+        {
+          "source": "fixed",
+          "x": 0.7941081024879633,
+          "y": 0.5056550587322695,
+          "keys": [
+            {
+              "key": "D1",
+              "intervalMilliseconds": 500
+            }
+          ],
+          "wait": "timed",
+          "waitMilliseconds": 2000
+        },
+        {
+          "source": "fixed",
+          "x": 0.7628344158793605,
+          "y": 0.5485078527572307,
+          "keys": [
+            {
+              "key": "D1",
+              "intervalMilliseconds": 500
+            }
+          ],
+          "wait": "timed",
+          "waitMilliseconds": 2000
+        },
+        {
+          "source": "fixed",
+          "x": 0.8202408191769622,
+          "y": 0.6190581626080452,
+          "keys": [
+            {
+              "key": "D1",
+              "intervalMilliseconds": 500
+            }
+          ],
+          "wait": "timed",
+          "waitMilliseconds": 2000
+        },
+        {
+          "source": "fixed",
+          "x": 0.9674119283986646,
+          "y": 0.45104883072224067,
+          "keys": [
+            {
+              "key": "D1",
+              "intervalMilliseconds": 500
+            }
+          ],
+          "wait": "timed",
+          "waitMilliseconds": 2000
+        }
+      ],
+      "routeFile": "routes\\\u0412\u043E\u0440\u043E\u043D\u0438\u0439 \u0437\u0430\u043C\u043E\u043A\\\u041F\u0440\u043E\u0431\u0435\u0433 \u041A\u0438\u043D\u0433\u0441\u0445\u0438\u043B\u043B-003 2.route.json",
+      "mapFile": "maps\\\u0412\u043E\u0440\u043E\u043D\u0438\u0439 \u0437\u0430\u043C\u043E\u043A.png",
+      "pauseAfterMilliseconds": 0
+    },
+    {
+      "type": "enterDoor",
+      "difficulty": 1,
+      "pauseAfterMilliseconds": 0
+    }
+  ]
+}

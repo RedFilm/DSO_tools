@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\WalkerEngine\WalkerEngine.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="map.png" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="door-retry.png" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="launcher-login.png" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="launcher-play.png" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="character-select.png" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>

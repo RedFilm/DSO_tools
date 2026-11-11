@@ -1,0 +1,1041 @@
+{
+  "version": 1,
+  "mapFile": "C:\\Users\\Roman\\Downloads\\Walker\\Database\\maps\\003.png",
+  "points": [
+    {
+      "x": 0.9273702315272919,
+      "y": 0.5434939814548866,
+      "keys": null
+    },
+    {
+      "x": 0.8494040667571797,
+      "y": 0.4851629718456393,
+      "keys": null
+    },
+    {
+      "x": 0.8015945726712077,
+      "y": 0.42327890832439746,
+      "keys": [
+        {
+          "key": "D5",
+          "intervalMilliseconds": 300
+        }
+      ]
+    },
+    {
+      "x": 0.7296553374390188,
+      "y": 0.3726370069715712,
+      "keys": [
+        {
+          "key": "D1",
+          "intervalMilliseconds": 500
+        },
+        {
+          "key": "D3",
+          "intervalMilliseconds": 1000
+        },
+        {
+          "key": "D4",
+          "intervalMilliseconds": 6000
+        }
+      ]
+    },
+    {
+      "x": 0.7091188501012519,
+      "y": 0.32491090562608504,
+      "keys": [
+        {
+          "key": "D1",
+          "intervalMilliseconds": 500
+        },
+        {
+          "key": "D3",
+          "intervalMilliseconds": 1000
+        },
+        {
+          "key": "D5",
+          "intervalMilliseconds": 100
+        }
+      ]
+    },
+    {
+      "x": 0.7481955976303617,
+      "y": 0.2825790106081495,
+      "keys": [
+        {
+          "key": "D1",
+          "intervalMilliseconds": 500
+        },
+        {
+          "key": "D3",
+          "intervalMilliseconds": 1000
+        },
+        {
+          "key": "D4",
+          "intervalMilliseconds": 6000
+        }
+      ]
+    },
+    {
+      "x": 0.7714121935118281,
+      "y": 0.2601444019990809,
+      "keys": [
+        {
+          "key": "D1",
+          "intervalMilliseconds": 500
+        },
+        {
+          "key": "D3",
+          "intervalMilliseconds": 1000
+        },
+        {
+          "key": "D4",
+          "intervalMilliseconds": 6000
+        }
+      ]
+    },
+    {
+      "x": 0.7616762321371042,
+      "y": 0.23687888750063826,
+      "keys": [
+        {
+          "key": "D1",
+          "intervalMilliseconds": 500
+        },
+        {
+          "key": "D3",
+          "intervalMilliseconds": 1000
+        },
+        {
+          "key": "D4",
+          "intervalMilliseconds": 6000
+        }
+      ]
+    },
+    {
+      "x": 0.7377107196071889,
+      "y": 0.2360479816112643,
+      "keys": [
+        {
+          "key": "D1",
+          "intervalMilliseconds": 500
+        },
+        {
+          "key": "D3",
+          "intervalMilliseconds": 1000
+        },
+        {
+          "key": "D4",
+          "intervalMilliseconds": 6000
+        }
+      ]
+    },
+    {
+      "x": 0.7072475247951951,
+      "y": 0.2681488086974699,
+      "keys": [
+        {
+          "key": "D1",
+          "intervalMilliseconds": 500
+        },
+        {
+          "key": "D3",
+          "intervalMilliseconds": 1000
+        },
+        {
+          "key": "D4",
+          "intervalMilliseconds": 6000
+        }
+      ]
+    },
+    {
+      "x": 0.6751804267534978,
+      "y": 0.3126620373694725,
+      "keys": [
+        {
+          "key": "D1",
+          "intervalMilliseconds": 500
+        },
+        {
+          "key": "D3",
+          "intervalMilliseconds": 1000
+        },
+        {
+          "key": "D4",
+          "intervalMilliseconds": 6000
+        }
+      ]
+    },
+    {
+      "x": 0.6185800723720545,
+      "y": 0.2555147058823529,
+      "keys": [
+        {
+          "key": "D1",
+          "intervalMilliseconds": 500
+        },
+        {
+          "key": "D3",
+          "intervalMilliseconds": 1000
+        },
+        {
+          "key": "D4",
+          "intervalMilliseconds": 6000
+        }
+      ]
+    },
+    {
+      "x": 0.578370578861377,
+      "y": 0.2276209164289088,
+      "keys": [
+        {
+          "key": "D1",
+          "intervalMilliseconds": 500
+        },
+        {
+          "key": "D3",
+          "intervalMilliseconds": 1000
+        },
+        {
+          "key": "D4",
+          "intervalMilliseconds": 6000
+        },
+        {
+          "key": "D5",
+          "intervalMilliseconds": 100
+        }
+      ]
+    },
+    {
+      "x": 0.5534770892540731,
+      "y": 0.1817366531471801,
+      "keys": [
+        {
+          "key": "D1",
+          "intervalMilliseconds": 500
+        },
+        {
+          "key": "D3",
+          "intervalMilliseconds": 1000
+        },
+        {
+          "key": "D4",
+          "intervalMilliseconds": 6000
+        }
+      ]
+    },
+    {
+      "x": 0.5579269476597017,
+      "y": 0.1346948910382838,
+      "keys": [
+        {
+          "key": "D1",
+          "intervalMilliseconds": 500
+        },
+        {
+          "key": "D3",
+          "intervalMilliseconds": 1000
+        },
+        {
+          "key": "D4",
+          "intervalMilliseconds": 6000
+        }
+      ]
+    },
+    {
+      "x": 0.60433114997066,
+      "y": 0.09340145385343265,
+      "keys": [
+        {
+          "key": "D1",
+          "intervalMilliseconds": 500
+        },
+        {
+          "key": "D3",
+          "intervalMilliseconds": 1000
+        },
+        {
+          "key": "D4",
+          "intervalMilliseconds": 6000
+        },
+        {
+          "key": "D5",
+          "intervalMilliseconds": 100
+        }
+      ]
+    },
+    {
+      "x": 0.5649968232954022,
+      "y": 0.035890663371366614,
+      "keys": [
+        {
+          "key": "D1",
+          "intervalMilliseconds": 500
+        },
+        {
+          "key": "D3",
+          "intervalMilliseconds": 1000
+        },
+        {
+          "key": "D4",
+          "intervalMilliseconds": 6000
+        }
+      ]
+    },
+    {
+      "x": 0.506154662906158,
+      "y": 0.11073225931404462,
+      "keys": [
+        {
+          "key": "D1",
+          "intervalMilliseconds": 500
+        },
+        {
+          "key": "D3",
+          "intervalMilliseconds": 1000
+        },
+        {
+          "key": "D4",
+          "intervalMilliseconds": 6000
+        }
+      ]
+    },
+    {
+      "x": 0.44710004803709497,
+      "y": 0.09413960400749655,
+      "keys": [
+        {
+          "key": "D1",
+          "intervalMilliseconds": 500
+        },
+        {
+          "key": "D3",
+          "intervalMilliseconds": 1000
+        },
+        {
+          "key": "D4",
+          "intervalMilliseconds": 6000
+        }
+      ]
+    },
+    {
+      "x": 0.4193778620903903,
+      "y": 0.03462451735353158,
+      "keys": [
+        {
+          "key": "D1",
+          "intervalMilliseconds": 500
+        },
+        {
+          "key": "D3",
+          "intervalMilliseconds": 1000
+        },
+        {
+          "key": "D4",
+          "intervalMilliseconds": 6000
+        }
+      ]
+    },
+    {
+      "x": 0.38450629300326766,
+      "y": 0.033155307271122154,
+      "keys": [
+        {
+          "key": "D1",
+          "intervalMilliseconds": 500
+        },
+        {
+          "key": "D3",
+          "intervalMilliseconds": 1000
+        },
+        {
+          "key": "D4",
+          "intervalMilliseconds": 6000
+        }
+      ]
+    },
+    {
+      "x": 0.40476911092541884,
+      "y": 0.07010722939485038,
+      "keys": [
+        {
+          "key": "D1",
+          "intervalMilliseconds": 500
+        },
+        {
+          "key": "D3",
+          "intervalMilliseconds": 1000
+        },
+        {
+          "key": "D4",
+          "intervalMilliseconds": 6000
+        }
+      ]
+    },
+    {
+      "x": 0.45733930225400404,
+      "y": 0.11983873953227124,
+      "keys": null
+    },
+    {
+      "x": 0.512391170451146,
+      "y": 0.1366761026818768,
+      "keys": [
+        {
+          "key": "D5",
+          "intervalMilliseconds": 100
+        },
+        {
+          "key": "D3",
+          "intervalMilliseconds": 1000
+        }
+      ]
+    },
+    {
+      "x": 0.5513601401417526,
+      "y": 0.20358374851201874,
+      "keys": null
+    },
+    {
+      "x": 0.5943223731331692,
+      "y": 0.2571802824930428,
+      "keys": null
+    },
+    {
+      "x": 0.6391771454172036,
+      "y": 0.28427647609336704,
+      "keys": [
+        {
+          "key": "D1",
+          "intervalMilliseconds": 500
+        },
+        {
+          "key": "D3",
+          "intervalMilliseconds": 1000
+        },
+        {
+          "key": "D4",
+          "intervalMilliseconds": 6000
+        }
+      ]
+    },
+    {
+      "x": 0.6181149826836341,
+      "y": 0.30918039060106467,
+      "keys": [
+        {
+          "key": "D1",
+          "intervalMilliseconds": 500
+        },
+        {
+          "key": "D3",
+          "intervalMilliseconds": 1000
+        },
+        {
+          "key": "D4",
+          "intervalMilliseconds": 6000
+        }
+      ]
+    },
+    {
+      "x": 0.597708431013554,
+      "y": 0.33434348012886794,
+      "keys": [
+        {
+          "key": "D1",
+          "intervalMilliseconds": 500
+        },
+        {
+          "key": "D3",
+          "intervalMilliseconds": 1000
+        },
+        {
+          "key": "D4",
+          "intervalMilliseconds": 6000
+        }
+      ]
+    },
+    {
+      "x": 0.5746766485065353,
+      "y": 0.31755641862457873,
+      "keys": [
+        {
+          "key": "D1",
+          "intervalMilliseconds": 500
+        },
+        {
+          "key": "D3",
+          "intervalMilliseconds": 1000
+        }
+      ]
+    },
+    {
+      "x": 0.5457408607269422,
+      "y": 0.34442320680306626,
+      "keys": [
+        {
+          "key": "D1",
+          "intervalMilliseconds": 500
+        },
+        {
+          "key": "D3",
+          "intervalMilliseconds": 1000
+        }
+      ]
+    },
+    {
+      "x": 0.5262451621323868,
+      "y": 0.37197307511871935,
+      "keys": [
+        {
+          "key": "D1",
+          "intervalMilliseconds": 500
+        },
+        {
+          "key": "D3",
+          "intervalMilliseconds": 1000
+        }
+      ]
+    },
+    {
+      "x": 0.5108537856538797,
+      "y": 0.3974737778208614,
+      "keys": [
+        {
+          "key": "D1",
+          "intervalMilliseconds": 500
+        },
+        {
+          "key": "D3",
+          "intervalMilliseconds": 1000
+        }
+      ]
+    },
+    {
+      "x": 0.4757973582474227,
+      "y": 0.4472521114972682,
+      "keys": [
+        {
+          "key": "D1",
+          "intervalMilliseconds": 500
+        },
+        {
+          "key": "D3",
+          "intervalMilliseconds": 1000
+        }
+      ]
+    },
+    {
+      "x": 0.47058168391591493,
+      "y": 0.486651651220384,
+      "keys": [
+        {
+          "key": "D1",
+          "intervalMilliseconds": 500
+        },
+        {
+          "key": "D3",
+          "intervalMilliseconds": 1000
+        },
+        {
+          "key": "D5",
+          "intervalMilliseconds": 100
+        }
+      ]
+    },
+    {
+      "x": 0.5051236272033781,
+      "y": 0.4934980604383681,
+      "keys": [
+        {
+          "key": "D1",
+          "intervalMilliseconds": 500
+        },
+        {
+          "key": "D3",
+          "intervalMilliseconds": 1000
+        },
+        {
+          "key": "D4",
+          "intervalMilliseconds": 6000
+        }
+      ]
+    },
+    {
+      "x": 0.5508242622566504,
+      "y": 0.5424093607983558,
+      "keys": [
+        {
+          "key": "D1",
+          "intervalMilliseconds": 500
+        },
+        {
+          "key": "D3",
+          "intervalMilliseconds": 1000
+        },
+        {
+          "key": "D4",
+          "intervalMilliseconds": 6000
+        }
+      ]
+    },
+    {
+      "x": 0.5929410369828102,
+      "y": 0.5896397509606056,
+      "keys": [
+        {
+          "key": "D1",
+          "intervalMilliseconds": 500
+        },
+        {
+          "key": "D3",
+          "intervalMilliseconds": 1000
+        }
+      ]
+    },
+    {
+      "x": 0.5718708291145066,
+      "y": 0.6363439622268178,
+      "keys": [
+        {
+          "key": "D1",
+          "intervalMilliseconds": 500
+        },
+        {
+          "key": "D3",
+          "intervalMilliseconds": 1000
+        }
+      ]
+    },
+    {
+      "x": 0.5619540544602587,
+      "y": 0.7085024765114379,
+      "keys": [
+        {
+          "key": "D1",
+          "intervalMilliseconds": 500
+        },
+        {
+          "key": "D3",
+          "intervalMilliseconds": 1000
+        }
+      ]
+    },
+    {
+      "x": 0.5235773235427789,
+      "y": 0.6556683708639706,
+      "keys": [
+        {
+          "key": "D1",
+          "intervalMilliseconds": 500
+        },
+        {
+          "key": "D3",
+          "intervalMilliseconds": 1000
+        }
+      ]
+    },
+    {
+      "x": 0.48039463588169645,
+      "y": 0.7019203535092422,
+      "keys": [
+        {
+          "key": "D1",
+          "intervalMilliseconds": 500
+        },
+        {
+          "key": "D3",
+          "intervalMilliseconds": 1000
+        }
+      ]
+    },
+    {
+      "x": 0.4430540643840897,
+      "y": 0.7467774035883885,
+      "keys": [
+        {
+          "key": "D1",
+          "intervalMilliseconds": 500
+        },
+        {
+          "key": "D3",
+          "intervalMilliseconds": 1000
+        }
+      ]
+    },
+    {
+      "x": 0.44922585129211157,
+      "y": 0.7794034371968188,
+      "keys": [
+        {
+          "key": "D1",
+          "intervalMilliseconds": 500
+        },
+        {
+          "key": "D3",
+          "intervalMilliseconds": 1000
+        }
+      ]
+    },
+    {
+      "x": 0.48494975521216865,
+      "y": 0.8100553026386336,
+      "keys": [
+        {
+          "key": "D1",
+          "intervalMilliseconds": 500
+        },
+        {
+          "key": "D3",
+          "intervalMilliseconds": 1000
+        },
+        {
+          "key": "D4",
+          "intervalMilliseconds": 6000
+        },
+        {
+          "key": "D5",
+          "intervalMilliseconds": 100
+        }
+      ]
+    },
+    {
+      "x": 0.42219959197233986,
+      "y": 0.8781163832720589,
+      "keys": [
+        {
+          "key": "D1",
+          "intervalMilliseconds": 500
+        },
+        {
+          "key": "D3",
+          "intervalMilliseconds": 1000
+        },
+        {
+          "key": "D2",
+          "intervalMilliseconds": 1000
+        }
+      ]
+    },
+    {
+      "x": 0.47455391300971095,
+      "y": 0.9392965478834763,
+      "keys": [
+        {
+          "key": "D1",
+          "intervalMilliseconds": 500
+        },
+        {
+          "key": "D3",
+          "intervalMilliseconds": 1000
+        },
+        {
+          "key": "D2",
+          "intervalMilliseconds": 1000
+        }
+      ]
+    },
+    {
+      "x": 0.48558972545505796,
+      "y": 0.9523914810878779,
+      "keys": [
+        {
+          "key": "D1",
+          "intervalMilliseconds": 500
+        },
+        {
+          "key": "D3",
+          "intervalMilliseconds": 1000
+        },
+        {
+          "key": "D4",
+          "intervalMilliseconds": 6000
+        }
+      ]
+    },
+    {
+      "x": 0.4625894043687868,
+      "y": 0.9566615484898386,
+      "keys": [
+        {
+          "key": "D1",
+          "intervalMilliseconds": 500
+        },
+        {
+          "key": "D3",
+          "intervalMilliseconds": 1000
+        },
+        {
+          "key": "D4",
+          "intervalMilliseconds": 6000
+        }
+      ]
+    },
+    {
+      "x": 0.4350332448338549,
+      "y": 0.9613887811797897,
+      "keys": [
+        {
+          "key": "D1",
+          "intervalMilliseconds": 500
+        },
+        {
+          "key": "D3",
+          "intervalMilliseconds": 1000
+        },
+        {
+          "key": "D4",
+          "intervalMilliseconds": 6000
+        },
+        {
+          "key": "D5",
+          "intervalMilliseconds": 100
+        }
+      ]
+    },
+    {
+      "x": 0.4077275631529593,
+      "y": 0.9428952285666871,
+      "keys": [
+        {
+          "key": "D1",
+          "intervalMilliseconds": 500
+        },
+        {
+          "key": "D3",
+          "intervalMilliseconds": 1000
+        },
+        {
+          "key": "D4",
+          "intervalMilliseconds": 6000
+        }
+      ]
+    },
+    {
+      "x": 0.37828290936521997,
+      "y": 0.91363525390625,
+      "keys": [
+        {
+          "key": "D1",
+          "intervalMilliseconds": 500
+        },
+        {
+          "key": "D3",
+          "intervalMilliseconds": 1000
+        },
+        {
+          "key": "D4",
+          "intervalMilliseconds": 6000
+        }
+      ]
+    },
+    {
+      "x": 0.3635071879458533,
+      "y": 0.8476066838682087,
+      "keys": [
+        {
+          "key": "D1",
+          "intervalMilliseconds": 500
+        },
+        {
+          "key": "D3",
+          "intervalMilliseconds": 1000
+        },
+        {
+          "key": "D4",
+          "intervalMilliseconds": 6000
+        }
+      ]
+    },
+    {
+      "x": 0.33430460731832196,
+      "y": 0.7612020953807955,
+      "keys": [
+        {
+          "key": "D1",
+          "intervalMilliseconds": 500
+        },
+        {
+          "key": "D3",
+          "intervalMilliseconds": 1000
+        },
+        {
+          "key": "D4",
+          "intervalMilliseconds": 6000
+        }
+      ]
+    },
+    {
+      "x": 0.22719835778574882,
+      "y": 0.6900561962252348,
+      "keys": [
+        {
+          "key": "D1",
+          "intervalMilliseconds": 500
+        },
+        {
+          "key": "D3",
+          "intervalMilliseconds": 1000
+        },
+        {
+          "key": "D4",
+          "intervalMilliseconds": 6000
+        }
+      ]
+    },
+    {
+      "x": 0.1919185767644284,
+      "y": 0.6419869715871375,
+      "keys": [
+        {
+          "key": "D1",
+          "intervalMilliseconds": 500
+        },
+        {
+          "key": "D3",
+          "intervalMilliseconds": 1000
+        },
+        {
+          "key": "D4",
+          "intervalMilliseconds": 6000
+        }
+      ]
+    },
+    {
+      "x": 0.17019172410023933,
+      "y": 0.6242478314568015,
+      "keys": [
+        {
+          "key": "D1",
+          "intervalMilliseconds": 500
+        },
+        {
+          "key": "D3",
+          "intervalMilliseconds": 1000
+        },
+        {
+          "key": "D4",
+          "intervalMilliseconds": 6000
+        }
+      ]
+    },
+    {
+      "x": 0.1379724763805631,
+      "y": 0.6308506984336704,
+      "keys": [
+        {
+          "key": "D1",
+          "intervalMilliseconds": 500
+        },
+        {
+          "key": "D3",
+          "intervalMilliseconds": 1000
+        },
+        {
+          "key": "D4",
+          "intervalMilliseconds": 6000
+        }
+      ]
+    },
+    {
+      "x": 0.12176024896231245,
+      "y": 0.6395027310240502,
+      "keys": [
+        {
+          "key": "D1",
+          "intervalMilliseconds": 500
+        },
+        {
+          "key": "D3",
+          "intervalMilliseconds": 1000
+        },
+        {
+          "key": "D4",
+          "intervalMilliseconds": 6000
+        }
+      ]
+    },
+    {
+      "x": 0.11075531365418469,
+      "y": 0.6582060171887766,
+      "keys": [
+        {
+          "key": "D1",
+          "intervalMilliseconds": 500
+        },
+        {
+          "key": "D3",
+          "intervalMilliseconds": 1000
+        },
+        {
+          "key": "D4",
+          "intervalMilliseconds": 6000
+        }
+      ]
+    },
+    {
+      "x": 0.09860295785895504,
+      "y": 0.6787809484145221,
+      "keys": [
+        {
+          "key": "D1",
+          "intervalMilliseconds": 500
+        },
+        {
+          "key": "D3",
+          "intervalMilliseconds": 1000
+        },
+        {
+          "key": "D4",
+          "intervalMilliseconds": 6000
+        }
+      ]
+    },
+    {
+      "x": 0.08574083241166353,
+      "y": 0.6828581866096047,
+      "keys": [
+        {
+          "key": "D1",
+          "intervalMilliseconds": 500
+        },
+        {
+          "key": "D3",
+          "intervalMilliseconds": 1000
+        },
+        {
+          "key": "D4",
+          "intervalMilliseconds": 6000
+        }
+      ]
+    },
+    {
+      "x": 0.05820433064658793,
+      "y": 0.6858790279213899,
+      "keys": [
+        {
+          "key": "D1",
+          "intervalMilliseconds": 500
+        },
+        {
+          "key": "D3",
+          "intervalMilliseconds": 1000
+        },
+        {
+          "key": "D4",
+          "intervalMilliseconds": 6000
+        }
+      ]
+    },
+    {
+      "x": 0.04550160785837974,
+      "y": 0.6281856462067249,
+      "keys": [
+        {
+          "key": "D5",
+          "intervalMilliseconds": 1000
+        }
+      ]
+    }
+  ]
+}
