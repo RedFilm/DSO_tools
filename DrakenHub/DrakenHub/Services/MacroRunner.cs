@@ -81,7 +81,7 @@ internal sealed class MacroRunner
         {
             var inv = _settings.Current.Inventory;
             OpenShop(inv);
-            await Delay(inv.Grid.SellClickDelayMs * 4, token);
+            await Delay(Math.Max(40, inv.Grid.SellClickDelayMs * 2), token);
             await SellSelectedTabs(inv, includeOther: true, token);
             if (inv.CloseInventory != null)
             {
@@ -270,52 +270,69 @@ internal sealed class MacroRunner
 
     private async Task SellSelectedTabs(InventorySettings inv, bool includeOther, CancellationToken token, bool clickInsteadOfSell = false)
     {
+        var tabDelay = Math.Max(20, inv.Grid.SellClickDelayMs);
         for (var i = 0; i < inv.SelectedTabs.Length; i++)
         {
             token.ThrowIfCancellationRequested();
             if (!inv.SelectedTabs[i]) continue;
             ClickTab(inv, i);
-            await Delay(inv.Grid.SellClickDelayMs * 2, token);
+            await Delay(tabDelay, token);
             await ScanAndSellTab(inv, includeOther, token, clickInsteadOfSell);
         }
     }
 
     private async Task ScanAndSellTab(InventorySettings inv, bool includeOther, CancellationToken token, bool clickInsteadOfSell = false)
     {
-        var passes = Math.Clamp(inv.Grid.ScanLevel, 1, 2);
-        var delay = Math.Max(10, inv.Grid.SellClickDelayMs);
-        for (var pass = 0; pass < passes; pass++)
+        var maxPasses = Math.Clamp(inv.Grid.ScanLevel, 1, 2);
+        var delay = Math.Max(8, inv.Grid.SellClickDelayMs);
+        var soldTotal = 0;
+
+        for (var pass = 0; pass < maxPasses; pass++)
         {
-            var step = pass == 0 && inv.Grid.FastFirstScan ? 1 : 1;
-            for (var row = 0; row < inv.Grid.Rows; row += step)
-            for (var col = 0; col < inv.Grid.Columns; col += step)
+            // Empty tab / nothing left: skip further passes immediately.
+            if (pass > 0 && soldTotal == 0)
+                break;
+
+            List<(int Row, int Col, Point Center)> hits;
+            using (var snapshot = ColorScanService.CaptureGrid(inv))
+                hits = _scan.FindMatches(inv, includeOther, snapshot);
+
+            if (hits.Count == 0)
+                break;
+
+            // Sell from bottom-right so earlier slots shift less after each sale.
+            hits.Sort((a, b) => b.Row != a.Row ? b.Row.CompareTo(a.Row) : b.Col.CompareTo(a.Col));
+
+            foreach (var hit in hits)
             {
                 token.ThrowIfCancellationRequested();
-                if (!_scan.CellMatchesAny(inv, row, col, includeOther)) continue;
-                var center = InventoryLayout.CellCenter(inv, row, col);
-                if (center == null) continue;
                 if (clickInsteadOfSell)
-                    _input.LeftClick(center.Value.X, center.Value.Y);
+                    _input.LeftClick(hit.Center.X, hit.Center.Y, settleMs: 2);
                 else
-                    _input.RightClick(center.Value.X, center.Value.Y);
+                    _input.RightClick(hit.Center.X, hit.Center.Y, settleMs: 2);
+                soldTotal++;
                 await Delay(delay, token);
             }
+
+            // Let inventory settle before a possible second pass (shifted items).
+            if (pass + 1 < maxPasses)
+                await Delay(Math.Max(15, delay / 2), token);
         }
     }
 
     private void OpenShop(InventorySettings inv)
     {
         Press(inv.SkillsWindowHotkey);
-        Thread.Sleep(80);
+        Thread.Sleep(50);
         if (inv.WisdomTab != null)
         {
-            _input.LeftClick(inv.WisdomTab.X, inv.WisdomTab.Y);
-            Thread.Sleep(80);
+            _input.LeftClick(inv.WisdomTab.X, inv.WisdomTab.Y, settleMs: 2);
+            Thread.Sleep(50);
         }
         if (inv.ShopButton != null)
         {
-            _input.LeftClick(inv.ShopButton.X, inv.ShopButton.Y);
-            Thread.Sleep(120);
+            _input.LeftClick(inv.ShopButton.X, inv.ShopButton.Y, settleMs: 2);
+            Thread.Sleep(80);
         }
     }
 
