@@ -420,17 +420,7 @@ internal sealed partial class MainForm : Form
                 : $"{_loc.T(labelKey)}: {p}";
         }
         Refresh();
-        button.Click += (_, _) =>
-        {
-            var pickSize = size ?? Math.Max(16, _settings.Current.Inventory.Grid.CrosshairSize);
-            using var overlay = new OverlayForm(pickSize, rectangle: true);
-            Hide();
-            overlay.ShowDialog();
-            Show();
-            setter(overlay.Result == null ? null : new ScreenPoint(overlay.Result.Value.X, overlay.Result.Value.Y));
-            Persist(immediate: true);
-            Refresh();
-        };
+        button.Click += (_, _) => PickCoord(setter, Refresh, size ?? Math.Max(16, _settings.Current.Inventory.Grid.CrosshairSize), useOrigin: false);
         _refreshAllLabels += Refresh;
     }
 
@@ -444,17 +434,34 @@ internal sealed partial class MainForm : Form
                 : $"{_loc.T(labelKey)}: {p}";
         }
         Refresh();
-        button.Click += (_, _) =>
-        {
-            using var overlay = new OverlayForm(sizeProvider(), rectangle: true);
-            Hide();
-            overlay.ShowDialog();
-            Show();
-            setter(overlay.Result == null ? null : new ScreenPoint(overlay.Result.Value.X, overlay.Result.Value.Y));
-            Persist(immediate: true);
-            Refresh();
-        };
+        // First cell / map item: store top-left of the picker square (grid origin), not cursor center.
+        button.Click += (_, _) => PickCoord(setter, Refresh, sizeProvider(), useOrigin: true);
         _refreshAllLabels += Refresh;
+    }
+
+    private void PickCoord(Action<ScreenPoint?> setter, Action refresh, int pickSize, bool useOrigin)
+    {
+        var gridWasVisible = _gridOverlay is { Visible: true };
+        if (_gridOverlay != null) _gridOverlay.Visible = false;
+
+        using var overlay = new OverlayForm(pickSize, rectangle: true);
+        Hide();
+        overlay.ShowDialog();
+        Show();
+
+        if (overlay.Result == null)
+            setter(null);
+        else
+        {
+            var p = useOrigin && overlay.Origin != null ? overlay.Origin.Value : overlay.Result.Value;
+            setter(new ScreenPoint(p.X, p.Y));
+        }
+
+        Persist(immediate: true, hotkeys: false, grid: true);
+        UpdateGridOverlay();
+        if (gridWasVisible && _gridOverlay != null)
+            _gridOverlay.Visible = true;
+        refresh();
     }
 
     private void BindCellButton(Button button, Func<CellRef?> getter, Action<CellRef?> setter, string labelKey)
@@ -482,7 +489,7 @@ internal sealed partial class MainForm : Form
                            ?? GuessCellFromPoint(overlay.Result.Value);
                 setter(cell);
             }
-            Persist(immediate: true);
+            Persist(immediate: true, grid: true);
             Refresh();
         };
         _refreshAllLabels += Refresh;
@@ -539,15 +546,22 @@ internal sealed partial class MainForm : Form
             if (_gridOverlay != null)
             {
                 _gridOverlay.Close();
+                _gridOverlay.Dispose();
                 _gridOverlay = null;
             }
             return;
         }
 
         var (cells, tabs, samples) = InventoryLayout.BuildOverlay(_settings.Current.Inventory);
-        _gridOverlay?.Close();
-        _gridOverlay = new GridOverlayForm(cells, tabs, samples);
-        _gridOverlay.Show();
+        if (_gridOverlay == null || _gridOverlay.IsDisposed)
+        {
+            _gridOverlay = new GridOverlayForm(cells, tabs, samples);
+            _gridOverlay.Show();
+        }
+        else
+        {
+            _gridOverlay.UpdateGeometry(cells, tabs, samples);
+        }
     }
 
     private void RegisterAllHotkeys()

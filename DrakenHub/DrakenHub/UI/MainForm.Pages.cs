@@ -1015,6 +1015,20 @@ internal sealed partial class MainForm
         var resSec = UiFactory.Section(_loc.T("resolution"), resInner, out var resTitle);
         UiFactory.Add(stack, resSec);
 
+        var gameInner = UiFactory.VStack();
+        var titleLabel = UiFactory.Lbl(_loc.T("gameWindowTitle"));
+        var titleBox = UiFactory.Tb(s.GameWindowTitleContains);
+        titleBox.Leave += (_, _) =>
+        {
+            s.GameWindowTitleContains = titleBox.Text.Trim();
+            Persist(hotkeys: false);
+        };
+        var hint = UiFactory.Lbl(_loc.T("gameWindowHint"), true);
+        gameInner.Controls.Add(UiFactory.FieldRow(titleLabel, titleBox, 180));
+        gameInner.Controls.Add(hint);
+        var gameSec = UiFactory.Section(_loc.T("gameWindow"), gameInner, out var gameTitle);
+        UiFactory.Add(stack, gameSec);
+
         var profileInner = UiFactory.VStack();
         var exportBtn = UiFactory.Btn(_loc.T("export"), BtnKind.Warn);
         var importBtn = UiFactory.Btn(_loc.T("import"), BtnKind.Warn);
@@ -1055,6 +1069,9 @@ internal sealed partial class MainForm
         {
             langTitle.Text = _loc.T("language");
             resTitle.Text = _loc.T("resolution");
+            gameTitle.Text = _loc.T("gameWindow");
+            titleLabel.Text = _loc.T("gameWindowTitle");
+            hint.Text = _loc.T("gameWindowHint");
             profileTitle.Text = _loc.T("profile");
             hotTitle.Text = _loc.T("winHotkeys");
             exportBtn.Text = _loc.T("export");

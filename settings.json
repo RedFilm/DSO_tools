@@ -1,0 +1,219 @@
+{
+  "language": "ru",
+  "resolutionPreset": "2560x1440",
+  "windowWidth": 1447,
+  "windowHeight": 975,
+  "windowX": 2588,
+  "windowY": 103,
+  "gameWindowTitleContains": "",
+  "windowHotkeys": {
+    "hideShow": "Insert",
+    "exit": "End",
+    "emergencyStop": "Home"
+  },
+  "inventory": {
+    "sellAllHotkey": null,
+    "sellCurrentHotkey": null,
+    "inventoryHotkey": "I",
+    "closeInventory": {
+      "x": 2534,
+      "y": 123
+    },
+    "firstTab": {
+      "x": 1795,
+      "y": 764
+    },
+    "firstCell": {
+      "x": 1826,
+      "y": 854
+    },
+    "skillsWindowHotkey": "S",
+    "wisdomTab": {
+      "x": 919,
+      "y": 234
+    },
+    "shopButton": {
+      "x": 1363,
+      "y": 1127
+    },
+    "grid": {
+      "showGrid": true,
+      "fastFirstScan": true,
+      "cellSize": 35,
+      "tabMarkerSize": 15,
+      "gapX": 4,
+      "gapY": 4,
+      "tabOffsetX": 40,
+      "crosshairSize": 24,
+      "scanLevel": 1,
+      "columns": 7,
+      "rows": 4,
+      "colorTolerance": 18,
+      "sellClickDelayMs": 40
+    },
+    "selectedTabs": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ],
+    "rarities": [
+      {
+        "id": "uncommon",
+        "name": "Uncommon",
+        "enabled": true,
+        "displayColorArgb": -13447886,
+        "points": [
+
+        ]
+      },
+      {
+        "id": "magic",
+        "name": "Magic",
+        "enabled": true,
+        "displayColorArgb": -14774017,
+        "points": [
+
+        ]
+      },
+      {
+        "id": "rare",
+        "name": "Rare",
+        "enabled": true,
+        "displayColorArgb": -65281,
+        "points": [
+
+        ]
+      },
+      {
+        "id": "epic",
+        "name": "Epic",
+        "enabled": true,
+        "displayColorArgb": -23296,
+        "points": [
+
+        ]
+      },
+      {
+        "id": "unique",
+        "name": "Unique",
+        "enabled": true,
+        "displayColorArgb": -10496,
+        "points": [
+
+        ]
+      },
+      {
+        "id": "set",
+        "name": "Set",
+        "enabled": true,
+        "displayColorArgb": -16711681,
+        "points": [
+
+        ]
+      }
+    ],
+    "otherItems": [
+
+    ],
+    "smelterItem": {
+      "x": 3569,
+      "y": 446
+    },
+    "smeltButton": null,
+    "smeltHotkey": null
+  },
+  "autoClicker": {
+    "leftMode": "hold",
+    "leftHotkey": null,
+    "leftDelayMs": 80,
+    "rightMode": "hold",
+    "rightHotkey": null,
+    "rightDelayMs": 30
+  },
+  "fastMount": {
+    "capeCell": {
+      "row": 1,
+      "col": 3
+    },
+    "mountHotkey": "O",
+    "fastMountHotkey": null,
+    "clickDelayMs": 30,
+    "mainPanelHotkey": "F1",
+    "jumpTargetPanelHotkey": null,
+    "jumpSkillHotkey": null,
+    "jumpMountHotkey": null
+  },
+  "gearSwap": {
+    "inventoryHotkey": "I",
+    "mainPanelHotkey": "F1",
+    "clickDelayMs": 30,
+    "profiles": [
+
+    ]
+  },
+  "extraSkill": {
+    "mainPanelHotkey": "F1",
+    "profiles": [
+
+    ]
+  },
+  "autoCast": {
+    "rows": [
+      {
+        "skillHotkey": "1",
+        "intervalMs": 2000,
+        "enabled": false,
+        "toggleHotkey": null
+      },
+      {
+        "skillHotkey": "2",
+        "intervalMs": 2000,
+        "enabled": false,
+        "toggleHotkey": null
+      },
+      {
+        "skillHotkey": "3",
+        "intervalMs": 2000,
+        "enabled": false,
+        "toggleHotkey": null
+      },
+      {
+        "skillHotkey": "4",
+        "intervalMs": 2000,
+        "enabled": false,
+        "toggleHotkey": null
+      },
+      {
+        "skillHotkey": "5",
+        "intervalMs": 4000,
+        "enabled": false,
+        "toggleHotkey": null
+      }
+    ]
+  },
+  "fastTeleport": {
+    "mapItem": {
+      "x": 4830,
+      "y": 503
+    },
+    "backButton": null,
+    "enterButton": null,
+    "clickDelayMs": 50,
+    "locations": [
+      {
+        "id": "5b2b2b1057ae45e98a848b24a7e087dc",
+        "name": "Location 1",
+        "hotkey": null,
+        "region": null,
+        "location": null,
+        "difficulty": null
+      }
+    ]
+  }
+}

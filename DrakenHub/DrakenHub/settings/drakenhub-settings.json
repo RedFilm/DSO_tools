@@ -1,0 +1,430 @@
+{
+  "language": "ru",
+  "resolutionPreset": "2560x1440",
+  "windowWidth": 1447,
+  "windowHeight": 975,
+  "windowX": 2588,
+  "windowY": 103,
+  "gameWindowTitleContains": "Drakensang Online",
+  "windowHotkeys": {
+    "hideShow": "Insert",
+    "exit": "End",
+    "emergencyStop": "Home"
+  },
+  "inventory": {
+    "sellAllHotkey": "OemTilde",
+    "sellCurrentHotkey": "Left Shift",
+    "inventoryHotkey": "I",
+    "closeInventory": {
+      "x": 2534,
+      "y": 123
+    },
+    "firstTab": {
+      "x": 1793,
+      "y": 762
+    },
+    "firstCell": {
+      "x": 1781,
+      "y": 805
+    },
+    "skillsWindowHotkey": "S",
+    "wisdomTab": {
+      "x": 924,
+      "y": 236
+    },
+    "shopButton": {
+      "x": 1361,
+      "y": 1126
+    },
+    "grid": {
+      "showGrid": false,
+      "fastFirstScan": true,
+      "cellSize": 92,
+      "tabMarkerSize": 36,
+      "gapX": 15,
+      "gapY": 16,
+      "tabOffsetX": 65,
+      "crosshairSize": 8,
+      "scanLevel": 2,
+      "columns": 7,
+      "rows": 4,
+      "colorTolerance": 24,
+      "sellClickDelayMs": 40
+    },
+    "selectedTabs": [
+      false,
+      true,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ],
+    "rarities": [
+      {
+        "id": "uncommon",
+        "name": "Uncommon",
+        "enabled": true,
+        "displayColorArgb": -13447886,
+        "points": [
+          {
+            "offsetX": 35,
+            "offsetY": 26,
+            "colorArgb": -8675477
+          },
+          {
+            "offsetX": 43,
+            "offsetY": 21,
+            "colorArgb": -5386340
+          },
+          {
+            "offsetX": 56,
+            "offsetY": 24,
+            "colorArgb": -8610195
+          },
+          {
+            "offsetX": 59,
+            "offsetY": 32,
+            "colorArgb": -9200021
+          },
+          {
+            "offsetX": 53,
+            "offsetY": 45,
+            "colorArgb": -8674709
+          },
+          {
+            "offsetX": 45,
+            "offsetY": 75,
+            "colorArgb": -8609940
+          }
+        ]
+      },
+      {
+        "id": "magic",
+        "name": "Magic",
+        "enabled": true,
+        "displayColorArgb": -14774017,
+        "points": [
+          {
+            "offsetX": 36,
+            "offsetY": 25,
+            "colorArgb": -13935478
+          },
+          {
+            "offsetX": 56,
+            "offsetY": 24,
+            "colorArgb": -14067324
+          },
+          {
+            "offsetX": 59,
+            "offsetY": 36,
+            "colorArgb": -14067834
+          },
+          {
+            "offsetX": 56,
+            "offsetY": 41,
+            "colorArgb": -14002555
+          },
+          {
+            "offsetX": 48,
+            "offsetY": 53,
+            "colorArgb": -13474154
+          },
+          {
+            "offsetX": 46,
+            "offsetY": 74,
+            "colorArgb": -13870971
+          }
+        ]
+      },
+      {
+        "id": "rare",
+        "name": "Rare",
+        "enabled": true,
+        "displayColorArgb": -65281,
+        "points": [
+          {
+            "offsetX": 34,
+            "offsetY": 26,
+            "colorArgb": -8641470
+          },
+          {
+            "offsetX": 50,
+            "offsetY": 23,
+            "colorArgb": -5491879
+          },
+          {
+            "offsetX": 61,
+            "offsetY": 27,
+            "colorArgb": -8707006
+          },
+          {
+            "offsetX": 56,
+            "offsetY": 38,
+            "colorArgb": -8968893
+          },
+          {
+            "offsetX": 47,
+            "offsetY": 50,
+            "colorArgb": -6542254
+          },
+          {
+            "offsetX": 44,
+            "offsetY": 74,
+            "colorArgb": -9231550
+          }
+        ]
+      },
+      {
+        "id": "epic",
+        "name": "Epic",
+        "enabled": true,
+        "displayColorArgb": -23296,
+        "points": [
+          {
+            "offsetX": 37,
+            "offsetY": 25,
+            "colorArgb": -26044
+          },
+          {
+            "offsetX": 50,
+            "offsetY": 20,
+            "colorArgb": -14502
+          },
+          {
+            "offsetX": 61,
+            "offsetY": 27,
+            "colorArgb": -27070
+          },
+          {
+            "offsetX": 59,
+            "offsetY": 40,
+            "colorArgb": -28094
+          },
+          {
+            "offsetX": 51,
+            "offsetY": 51,
+            "colorArgb": -23990
+          },
+          {
+            "offsetX": 47,
+            "offsetY": 74,
+            "colorArgb": -614841
+          }
+        ]
+      },
+      {
+        "id": "unique",
+        "name": "Unique",
+        "enabled": true,
+        "displayColorArgb": -10496,
+        "points": [
+          {
+            "offsetX": 36,
+            "offsetY": 26,
+            "colorArgb": -1271
+          },
+          {
+            "offsetX": 45,
+            "offsetY": 21,
+            "colorArgb": -924
+          },
+          {
+            "offsetX": 57,
+            "offsetY": 25,
+            "colorArgb": -1272
+          },
+          {
+            "offsetX": 58,
+            "offsetY": 35,
+            "colorArgb": -763
+          },
+          {
+            "offsetX": 50,
+            "offsetY": 48,
+            "colorArgb": -174
+          },
+          {
+            "offsetX": 44,
+            "offsetY": 75,
+            "colorArgb": -329190
+          }
+        ]
+      },
+      {
+        "id": "set",
+        "name": "Set",
+        "enabled": true,
+        "displayColorArgb": -16711681,
+        "points": [
+          {
+            "offsetX": 36,
+            "offsetY": 26,
+            "colorArgb": -16207138
+          },
+          {
+            "offsetX": 43,
+            "offsetY": 21,
+            "colorArgb": -11351065
+          },
+          {
+            "offsetX": 55,
+            "offsetY": 23,
+            "colorArgb": -16207139
+          },
+          {
+            "offsetX": 58,
+            "offsetY": 34,
+            "colorArgb": -16732458
+          },
+          {
+            "offsetX": 51,
+            "offsetY": 48,
+            "colorArgb": -16208162
+          },
+          {
+            "offsetX": 44,
+            "offsetY": 74,
+            "colorArgb": -16470053
+          }
+        ]
+      }
+    ],
+    "otherItems": [
+      {
+        "id": "d5d97acdd17a4bb7b3f19333237aef04",
+        "name": "GreenEs",
+        "enabled": true,
+        "points": [
+          {
+            "offsetX": 30,
+            "offsetY": 36,
+            "colorArgb": -14576358
+          },
+          {
+            "offsetX": 60,
+            "offsetY": 27,
+            "colorArgb": -14765290
+          },
+          {
+            "offsetX": 70,
+            "offsetY": 51,
+            "colorArgb": -15152593
+          },
+          {
+            "offsetX": 79,
+            "offsetY": 59,
+            "colorArgb": -14258664
+          },
+          {
+            "offsetX": 53,
+            "offsetY": 49,
+            "colorArgb": -15016146
+          },
+          {
+            "offsetX": 38,
+            "offsetY": 49,
+            "colorArgb": -14422623
+          },
+          {
+            "offsetX": 29,
+            "offsetY": 66,
+            "colorArgb": -13843949
+          }
+        ]
+      }
+    ],
+    "smelterItem": {
+      "x": 3569,
+      "y": 446
+    },
+    "smeltButton": null,
+    "smeltHotkey": null
+  },
+  "autoClicker": {
+    "leftMode": "hold",
+    "leftHotkey": null,
+    "leftDelayMs": 80,
+    "rightMode": "hold",
+    "rightHotkey": null,
+    "rightDelayMs": 30
+  },
+  "fastMount": {
+    "capeCell": {
+      "row": 1,
+      "col": 3
+    },
+    "mountHotkey": "O",
+    "fastMountHotkey": null,
+    "clickDelayMs": 30,
+    "mainPanelHotkey": "F1",
+    "jumpTargetPanelHotkey": null,
+    "jumpSkillHotkey": null,
+    "jumpMountHotkey": null
+  },
+  "gearSwap": {
+    "inventoryHotkey": "I",
+    "mainPanelHotkey": "F1",
+    "clickDelayMs": 30,
+    "profiles": []
+  },
+  "extraSkill": {
+    "mainPanelHotkey": "F1",
+    "profiles": []
+  },
+  "autoCast": {
+    "rows": [
+      {
+        "skillHotkey": "1",
+        "intervalMs": 2000,
+        "enabled": false,
+        "toggleHotkey": null
+      },
+      {
+        "skillHotkey": "2",
+        "intervalMs": 2000,
+        "enabled": false,
+        "toggleHotkey": null
+      },
+      {
+        "skillHotkey": "3",
+        "intervalMs": 2000,
+        "enabled": false,
+        "toggleHotkey": null
+      },
+      {
+        "skillHotkey": "4",
+        "intervalMs": 2000,
+        "enabled": false,
+        "toggleHotkey": null
+      },
+      {
+        "skillHotkey": "5",
+        "intervalMs": 4000,
+        "enabled": false,
+        "toggleHotkey": null
+      }
+    ]
+  },
+  "fastTeleport": {
+    "mapItem": {
+      "x": 4830,
+      "y": 503
+    },
+    "backButton": null,
+    "enterButton": null,
+    "clickDelayMs": 50,
+    "locations": [
+      {
+        "id": "5b2b2b1057ae45e98a848b24a7e087dc",
+        "name": "Location 1",
+        "hotkey": null,
+        "region": null,
+        "location": null,
+        "difficulty": null
+      }
+    ]
+  }
+}

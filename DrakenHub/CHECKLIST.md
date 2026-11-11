@@ -38,8 +38,8 @@
 
 ## Технические пробелы
 
-- [ ] **Привязка к окну игры**  
-  Решение: скопировать нужное из `WalkerEngine` (`GameWindowFocus`: поиск по заголовку, client rect, focus) **дублированием в DrakenHub** — без общей библиотеки, чтобы не ломать WalkerEngine; рефакторинг/унификация позже. Макрос рассчитан на **полноэкранный** режим — учесть exclusive/borderless fullscreen (client ≈ экран, без windowed chrome / `SetWindowPos`).
+- [x] **Привязка к окну игры**  
+  Сделано дублированием: `DrakenHub/Core/GameWindowFocus.cs` (find/focus/client rect, **без** `SetWindowPos`). Настройка `GameWindowTitleContains` в Настройках. Перед макросом — `TryActivate`. Пустой заголовок = без привязки. Fullscreen: окно не двигаем/не ресайзим. Общая библиотека — позже.
 
 - [ ] **Мультимонитор / DPI scaling**  
   Overlay берёт `VirtualScreen`, DPI PerMonitorV2 включён, но нет отдельной калибровки под 125%/150% scaling.

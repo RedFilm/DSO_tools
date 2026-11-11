@@ -44,7 +44,11 @@ internal sealed class MacroRunner
 
         _ = Task.Run(async () =>
         {
-            try { await work(token); }
+            try
+            {
+                EnsureGameFocused();
+                await work(token);
+            }
             catch (OperationCanceledException) { }
             finally
             {
@@ -55,6 +59,20 @@ internal sealed class MacroRunner
                 }
             }
         }, token);
+    }
+
+    /// <summary>
+    /// Fullscreen: activate game by title substring. No window move/resize.
+    /// Empty title = skip (absolute screen coords as calibrated).
+    /// </summary>
+    private void EnsureGameFocused()
+    {
+        var title = _settings.Current.GameWindowTitleContains;
+        if (string.IsNullOrWhiteSpace(title))
+            return;
+
+        if (GameWindowFocus.TryActivate(title, out _))
+            Thread.Sleep(80);
     }
 
     public void SellAll()

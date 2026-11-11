@@ -10,7 +10,11 @@ internal sealed class OverlayForm : Form
     private bool _saved;
     private bool _cancelled;
 
+    /// <summary>Cursor position at click (screen coords).</summary>
     public Point? Result { get; private set; }
+
+    /// <summary>Top-left of the picker rectangle (screen coords). Same as Result for crosshair.</summary>
+    public Point? Origin { get; private set; }
 
     public OverlayForm(int size, bool rectangle = false)
     {
@@ -55,9 +59,7 @@ internal sealed class OverlayForm : Form
         using var brush = new SolidBrush(Color.FromArgb(80, 255, 0, 0));
         var local = PointToClient(_cursor);
         var half = _size / 2;
-        var rect = _rectangle
-            ? new Rectangle(local.X - half, local.Y - half, _size, _size)
-            : new Rectangle(local.X - half, local.Y - half, _size, _size);
+        var rect = new Rectangle(local.X - half, local.Y - half, _size, _size);
 
         e.Graphics.FillRectangle(brush, rect);
         e.Graphics.DrawRectangle(pen, rect);
@@ -72,12 +74,16 @@ internal sealed class OverlayForm : Form
     protected override void OnMouseDown(MouseEventArgs e)
     {
         base.OnMouseDown(e);
-        if (e.Button == MouseButtons.Left)
-        {
-            Result = Cursor.Position;
-            _saved = true;
-            Close();
-        }
+        if (e.Button != MouseButtons.Left) return;
+
+        var cursor = Cursor.Position;
+        Result = cursor;
+        var half = _size / 2;
+        Origin = _rectangle
+            ? new Point(cursor.X - half, cursor.Y - half)
+            : cursor;
+        _saved = true;
+        Close();
     }
 
     protected override void OnKeyDown(KeyEventArgs e)
@@ -86,6 +92,7 @@ internal sealed class OverlayForm : Form
         if (e.KeyCode == Keys.Escape)
         {
             Result = null;
+            Origin = null;
             _cancelled = true;
             Close();
         }
@@ -100,23 +107,13 @@ internal sealed class OverlayForm : Form
         }
         base.OnFormClosed(e);
     }
-
-    protected override CreateParams CreateParams
-    {
-        get
-        {
-            var cp = base.CreateParams;
-            cp.ExStyle |= 0x08000000; // WS_EX_NOACTIVATE optional not used
-            return cp;
-        }
-    }
 }
 
 internal sealed class GridOverlayForm : Form
 {
-    private readonly List<Rectangle> _cells;
-    private readonly List<Rectangle> _tabs;
-    private readonly List<Point> _samplePoints;
+    private List<Rectangle> _cells;
+    private List<Rectangle> _tabs;
+    private List<Point> _samplePoints;
 
     public GridOverlayForm(List<Rectangle> cells, List<Rectangle> tabs, List<Point> samplePoints)
     {
@@ -130,6 +127,21 @@ internal sealed class GridOverlayForm : Form
         TransparencyKey = Color.Magenta;
         Bounds = SystemInformation.VirtualScreen;
         DoubleBuffered = true;
+        SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.UserPaint | ControlStyles.OptimizedDoubleBuffer, true);
+    }
+
+    public void UpdateGeometry(List<Rectangle> cells, List<Rectangle> tabs, List<Point> samplePoints)
+    {
+        _cells = cells;
+        _tabs = tabs;
+        _samplePoints = samplePoints;
+        if (!Visible) Show();
+        else
+        {
+            BringToFront();
+            Invalidate();
+            Update();
+        }
     }
 
     protected override CreateParams CreateParams
@@ -137,6 +149,7 @@ internal sealed class GridOverlayForm : Form
         get
         {
             var cp = base.CreateParams;
+            // Layered + transparent to clicks, but still painted.
             cp.ExStyle |= 0x80000 | 0x20; // WS_EX_LAYERED | WS_EX_TRANSPARENT
             return cp;
         }

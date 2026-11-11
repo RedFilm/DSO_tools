@@ -11,6 +11,9 @@ public sealed class AppSettings
     public int WindowX { get; set; } = 100;
     public int WindowY { get; set; } = 100;
 
+    /// <summary>Substring of the game window title (fullscreen). Empty = do not bind/focus.</summary>
+    public string GameWindowTitleContains { get; set; } = "Drakensang Online";
+
     public WindowHotkeys WindowHotkeys { get; set; } = new();
     public InventorySettings Inventory { get; set; } = new();
     public AutoClickerSettings AutoClicker { get; set; } = new();
