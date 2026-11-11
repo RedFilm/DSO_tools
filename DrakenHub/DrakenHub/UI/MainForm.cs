@@ -14,14 +14,20 @@ internal sealed partial class MainForm : Form
     private readonly AutoClickerController _autoClicker;
     private readonly AutoCastController _autoCast;
 
-    private readonly TableLayoutPanel _nav = new();
+    private readonly SplitContainer _shell = new();
+    private readonly Panel _navRail = new();
     private readonly Panel _contentHost = new();
     private readonly Dictionary<string, Panel> _pages = new();
     private readonly Dictionary<string, Button> _navButtons = new();
+    private readonly System.Windows.Forms.Timer _persistTimer = new() { Interval = 280 };
+
     private string _activePage = "inventory";
     private string _inventorySub = "sell";
     private GridOverlayForm? _gridOverlay;
     private bool _hidden;
+    private bool _persistQueued;
+    private bool _persistHotkeys;
+    private bool _persistGrid;
 
     private Action? _refreshInventory;
     private Action? _refreshGearSwap;
@@ -29,6 +35,18 @@ internal sealed partial class MainForm : Form
     private Action? _refreshTeleport;
     private Action? _refreshAutoCast;
     private Action? _refreshAllLabels;
+
+    private static readonly (string Id, string Key)[] NavItems =
+    [
+        ("inventory", "tab.inventory"),
+        ("autoclicker", "tab.autoclicker"),
+        ("fastmount", "tab.fastmount"),
+        ("extraskill", "tab.extraskill"),
+        ("gearswap", "tab.gearswap"),
+        ("autocast", "tab.autocast"),
+        ("teleport", "tab.teleport"),
+        ("settings", "tab.settings")
+    ];
 
     public MainForm()
     {
@@ -47,13 +65,23 @@ internal sealed partial class MainForm : Form
         BackColor = Theme.Bg;
         ForeColor = Theme.Text;
         Font = Theme.UiFont;
-        MinimumSize = new Size(1000, 700);
-        if (_settings.Current.WindowWidth < 1000) _settings.Current.WindowWidth = 1100;
-        if (_settings.Current.WindowHeight < 700) _settings.Current.WindowHeight = 760;
+        MinimumSize = new Size(980, 640);
+        if (_settings.Current.WindowWidth < 980) _settings.Current.WindowWidth = 1120;
+        if (_settings.Current.WindowHeight < 640) _settings.Current.WindowHeight = 760;
         Size = new Size(_settings.Current.WindowWidth, _settings.Current.WindowHeight);
         Location = new Point(_settings.Current.WindowX, _settings.Current.WindowY);
         KeyPreview = true;
         DoubleBuffered = true;
+
+        _persistTimer.Tick += (_, _) =>
+        {
+            _persistTimer.Stop();
+            if (_persistQueued)
+            {
+                _persistQueued = false;
+                FlushPersist();
+            }
+        };
 
         BuildChrome();
         BuildPages();
@@ -63,13 +91,20 @@ internal sealed partial class MainForm : Form
         _autoClicker.AttachRawKeys(_hotkeys);
         Load += (_, _) =>
         {
+            PlaceShell();
             RegisterAllHotkeys();
             _autoClicker.ApplySettings();
             _autoCast.ApplySettings();
             UpdateGridOverlay();
         };
+        Shown += (_, _) => PlaceShell();
         FormClosing += (_, _) =>
         {
+            if (_persistQueued)
+            {
+                _persistTimer.Stop();
+                FlushPersist();
+            }
             _settings.Current.WindowWidth = Width;
             _settings.Current.WindowHeight = Height;
             _settings.Current.WindowX = Left;
@@ -78,6 +113,7 @@ internal sealed partial class MainForm : Form
             _hotkeys.Dispose();
             _autoClicker.Dispose();
             _autoCast.Dispose();
+            _persistTimer.Dispose();
             _gridOverlay?.Close();
         };
     }
@@ -90,52 +126,95 @@ internal sealed partial class MainForm : Form
 
     private void BuildChrome()
     {
-        _nav.Dock = DockStyle.Top;
-        _nav.Height = 42;
-        _nav.BackColor = Theme.Bg;
-        _nav.Padding = new Padding(6, 4, 6, 4);
-        _nav.Margin = new Padding(0);
-        _nav.ColumnCount = 8;
-        _nav.RowCount = 1;
-        _nav.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
-        for (var i = 0; i < 8; i++)
-            _nav.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 12.5f));
+        _shell.Dock = DockStyle.Fill;
+        _shell.FixedPanel = FixedPanel.Panel1;
+        _shell.SplitterWidth = 6;
+        _shell.BackColor = Theme.Border;
+        // Min sizes / distance set in PlaceShell after real width is known.
 
-        var tabs = new[]
+        _navRail.Dock = DockStyle.Fill;
+        _navRail.BackColor = Theme.Panel;
+        _navRail.Padding = new Padding(0);
+
+        var brand = new Label
         {
-            ("inventory", "tab.inventory"),
-            ("autoclicker", "tab.autoclicker"),
-            ("fastmount", "tab.fastmount"),
-            ("extraskill", "tab.extraskill"),
-            ("gearswap", "tab.gearswap"),
-            ("autocast", "tab.autocast"),
-            ("teleport", "tab.teleport"),
-            ("settings", "tab.settings")
+            Text = "DrakenHub",
+            Dock = DockStyle.Top,
+            Height = 48,
+            Font = Theme.UiFontTitle,
+            ForeColor = Theme.Accent,
+            TextAlign = ContentAlignment.MiddleLeft,
+            Padding = new Padding(14, 0, 0, 0),
+            BackColor = Theme.Panel
         };
-        for (var i = 0; i < tabs.Length; i++)
+
+        var navButtons = new FlowLayoutPanel
         {
-            var (id, key) = tabs[i];
+            Dock = DockStyle.Fill,
+            FlowDirection = FlowDirection.TopDown,
+            WrapContents = false,
+            AutoScroll = true,
+            BackColor = Theme.Panel,
+            Padding = new Padding(0, 4, 0, 8)
+        };
+
+        foreach (var (id, key) in NavItems)
+        {
             var pageId = id;
-            var btn = UiFactory.Btn(_loc.T(key), Theme.TabIdle, 30);
-            btn.MaximumSize = new Size(4096, 30);
-            btn.MinimumSize = new Size(40, 30);
-            btn.Dock = DockStyle.Fill;
-            btn.Margin = new Padding(2, 0, 2, 0);
-            btn.Padding = new Padding(2, 0, 2, 0);
-            btn.ForeColor = Theme.Text;
-            btn.Font = Theme.UiFontSmall;
+            var btn = UiFactory.NavBtn(_loc.T(key));
+            btn.Dock = DockStyle.None;
+            btn.Width = 188;
+            btn.Height = 40;
+            btn.Margin = new Padding(0, 0, 0, 2);
             btn.Click += (_, _) => ShowPage(pageId);
             _navButtons[id] = btn;
-            _nav.Controls.Add(btn, i, 0);
+            navButtons.Controls.Add(btn);
         }
+
+        _navRail.Controls.Add(navButtons);
+        _navRail.Controls.Add(brand);
 
         _contentHost.Dock = DockStyle.Fill;
         _contentHost.BackColor = Theme.Bg;
-        _contentHost.Padding = new Padding(0);
+        _contentHost.Padding = Padding.Empty;
 
-        // Dock order: Fill first, then Top (z-order).
-        Controls.Add(_contentHost);
-        Controls.Add(_nav);
+        _shell.Panel1.Controls.Add(_navRail);
+        _shell.Panel2.Controls.Add(_contentHost);
+        Controls.Add(_shell);
+    }
+
+    private void PlaceShell()
+    {
+        const int panel1Min = 168;
+        const int panel2MinPreferred = 480;
+        const int target = 200;
+
+        var room = _shell.Width - _shell.SplitterWidth;
+        if (room <= 0) return;
+
+        var p1 = Math.Clamp(panel1Min, 0, Math.Max(0, room - 1));
+        var p2 = Math.Clamp(panel2MinPreferred, 0, Math.Max(0, room - p1));
+        if (p1 + p2 > room)
+            p2 = Math.Max(0, room - p1);
+        if (p1 + p2 > room) return;
+
+        var min = p1;
+        var max = room - p2;
+        if (max < min) return;
+
+        try
+        {
+            _shell.Panel1MinSize = p1;
+            _shell.Panel2MinSize = p2;
+            _shell.SplitterDistance = Math.Clamp(target, min, max);
+        }
+        catch (InvalidOperationException)
+        {
+            // Container not laid out yet — retry on next Shown/Load.
+        }
+        catch (ArgumentException)
+        {
+        }
     }
 
     private void ShowPage(string id)
@@ -143,14 +222,18 @@ internal sealed partial class MainForm : Form
         _activePage = id;
         foreach (var pair in _navButtons)
         {
-            pair.Value.BackColor = pair.Key == id ? Theme.TabActive : Theme.TabIdle;
+            var active = pair.Key == id;
+            pair.Value.BackColor = active ? Theme.NavActive : Theme.NavIdle;
             pair.Value.ForeColor = Theme.Text;
         }
 
-        _contentHost.Controls.Clear();
-        if (_pages.TryGetValue(id, out var page))
+        foreach (var pair in _pages)
+            pair.Value.Visible = pair.Key == id;
+
+        if (_pages.TryGetValue(id, out var page) && !_contentHost.Controls.Contains(page))
         {
             page.Dock = DockStyle.Fill;
+            page.Visible = true;
             _contentHost.Controls.Add(page);
         }
     }
@@ -168,24 +251,60 @@ internal sealed partial class MainForm : Form
 
     private void BuildPages()
     {
-        _pages["inventory"] = BuildInventoryPage();
-        _pages["autoclicker"] = BuildAutoClickerPage();
-        _pages["fastmount"] = BuildFastMountPage();
-        _pages["extraskill"] = BuildExtraSkillPage();
-        _pages["gearswap"] = BuildGearSwapPage();
-        _pages["autocast"] = BuildAutoCastPage();
-        _pages["teleport"] = BuildTeleportPage();
-        _pages["settings"] = BuildSettingsPage();
+        _contentHost.Controls.Clear();
+        _pages.Clear();
+
+        void Put(string id, Panel page)
+        {
+            page.Dock = DockStyle.Fill;
+            page.Visible = false;
+            _pages[id] = page;
+            _contentHost.Controls.Add(page);
+        }
+
+        Put("inventory", BuildInventoryPage());
+        Put("autoclicker", BuildAutoClickerPage());
+        Put("fastmount", BuildFastMountPage());
+        Put("extraskill", BuildExtraSkillPage());
+        Put("gearswap", BuildGearSwapPage());
+        Put("autocast", BuildAutoCastPage());
+        Put("teleport", BuildTeleportPage());
+        Put("settings", BuildSettingsPage());
     }
 
-    private void Persist()
+    private void Persist(bool immediate = false, bool hotkeys = true, bool grid = false)
     {
         SyncSharedBindings();
+        if (hotkeys) _persistHotkeys = true;
+        if (grid) _persistGrid = true;
+        if (immediate)
+        {
+            _persistTimer.Stop();
+            _persistQueued = false;
+            FlushPersist();
+            return;
+        }
+
+        _persistQueued = true;
+        _persistTimer.Stop();
+        _persistTimer.Start();
+    }
+
+    private void FlushPersist()
+    {
         _settings.Save();
-        RegisterAllHotkeys();
-        _autoClicker.ApplySettings();
-        _autoCast.ApplySettings();
-        UpdateGridOverlay();
+        if (_persistHotkeys)
+        {
+            RegisterAllHotkeys();
+            _autoClicker.ApplySettings();
+            _autoCast.ApplySettings();
+            _persistHotkeys = false;
+        }
+        if (_persistGrid)
+        {
+            UpdateGridOverlay();
+            _persistGrid = false;
+        }
     }
 
     private void SyncSharedBindings()
@@ -214,7 +333,7 @@ internal sealed partial class MainForm : Form
         if (pressed == Keys.Escape)
         {
             assign(null);
-            Persist();
+            Persist(immediate: true);
             return true;
         }
 
@@ -225,14 +344,13 @@ internal sealed partial class MainForm : Form
         }
 
         assign(KeyNames.Format(pressed));
-        Persist();
+        Persist(immediate: true);
         return true;
     }
 
     private bool IsLaunchConflict(Keys key, string? exceptId)
     {
         if (key == Keys.None) return false;
-        var name = KeyNames.Format(key);
         var s = _settings.Current;
         bool Same(string? stored, string id) =>
             id != exceptId && KeyNames.Parse(stored) == key;
@@ -253,7 +371,6 @@ internal sealed partial class MainForm : Form
         if (Same(s.WindowHotkeys.HideShow, "win.hide")) return true;
         if (Same(s.WindowHotkeys.Exit, "win.exit")) return true;
         if (Same(s.WindowHotkeys.EmergencyStop, "win.stop")) return true;
-        // Auto-clicker hotkeys also launch behavior
         if (Same(s.AutoClicker.LeftHotkey, "aclick.left")) return true;
         if (Same(s.AutoClicker.RightHotkey, "aclick.right")) return true;
         return false;
@@ -286,7 +403,7 @@ internal sealed partial class MainForm : Form
             {
                 if (key == Keys.Escape) setter(null);
                 else setter(KeyNames.Format(key));
-                Persist();
+                Persist(immediate: true);
                 Refresh();
             });
         };
@@ -310,16 +427,31 @@ internal sealed partial class MainForm : Form
             Hide();
             overlay.ShowDialog();
             Show();
-            if (overlay.Result == null)
-            {
-                // Escape clears
-                setter(null);
-            }
-            else
-            {
-                setter(new ScreenPoint(overlay.Result.Value.X, overlay.Result.Value.Y));
-            }
-            Persist();
+            setter(overlay.Result == null ? null : new ScreenPoint(overlay.Result.Value.X, overlay.Result.Value.Y));
+            Persist(immediate: true);
+            Refresh();
+        };
+        _refreshAllLabels += Refresh;
+    }
+
+    private void BindCoordButton(Button button, Func<ScreenPoint?> getter, Action<ScreenPoint?> setter, string labelKey, Func<int> sizeProvider)
+    {
+        void Refresh()
+        {
+            var p = getter();
+            button.Text = p == null
+                ? $"{_loc.T(labelKey)}: {_loc.T("none")}"
+                : $"{_loc.T(labelKey)}: {p}";
+        }
+        Refresh();
+        button.Click += (_, _) =>
+        {
+            using var overlay = new OverlayForm(sizeProvider(), rectangle: true);
+            Hide();
+            overlay.ShowDialog();
+            Show();
+            setter(overlay.Result == null ? null : new ScreenPoint(overlay.Result.Value.X, overlay.Result.Value.Y));
+            Persist(immediate: true);
             Refresh();
         };
         _refreshAllLabels += Refresh;
@@ -343,16 +475,14 @@ internal sealed partial class MainForm : Form
             overlay.ShowDialog();
             Show();
             if (overlay.Result == null)
-            {
                 setter(null);
-            }
             else
             {
                 var cell = InventoryLayout.PointToCell(_settings.Current.Inventory, overlay.Result.Value)
                            ?? GuessCellFromPoint(overlay.Result.Value);
                 setter(cell);
             }
-            Persist();
+            Persist(immediate: true);
             Refresh();
         };
         _refreshAllLabels += Refresh;
@@ -398,7 +528,7 @@ internal sealed partial class MainForm : Form
             OffsetY = overlay.Result.Value.Y - origin.Y,
             ColorArgb = color.ToArgb()
         });
-        Persist();
+        Persist(immediate: true, hotkeys: false, grid: true);
     }
 
     private void UpdateGridOverlay()
@@ -439,7 +569,7 @@ internal sealed partial class MainForm : Form
             _macros.EmergencyStop();
             _autoClicker.StopAll();
             _autoCast.StopAll();
-            Persist();
+            Persist(immediate: true);
             _refreshAutoCast?.Invoke();
         });
 
@@ -477,19 +607,22 @@ internal sealed partial class MainForm : Form
 
     private void RelocalizeNav()
     {
-        var map = new Dictionary<string, string>
-        {
-            ["inventory"] = "tab.inventory",
-            ["autoclicker"] = "tab.autoclicker",
-            ["fastmount"] = "tab.fastmount",
-            ["extraskill"] = "tab.extraskill",
-            ["gearswap"] = "tab.gearswap",
-            ["autocast"] = "tab.autocast",
-            ["teleport"] = "tab.teleport",
-            ["settings"] = "tab.settings"
-        };
-        foreach (var pair in map)
-            if (_navButtons.TryGetValue(pair.Key, out var btn))
-                btn.Text = _loc.T(pair.Value);
+        foreach (var (id, key) in NavItems)
+            if (_navButtons.TryGetValue(id, out var btn))
+                btn.Text = _loc.T(key);
+    }
+
+    private void RebuildUi(string? stayOn = null)
+    {
+        var current = stayOn ?? _activePage;
+        _refreshAllLabels = null;
+        _refreshInventory = null;
+        _refreshGearSwap = null;
+        _refreshExtraSkill = null;
+        _refreshTeleport = null;
+        _refreshAutoCast = null;
+        BuildPages();
+        RelocalizeNav();
+        ShowPage(current);
     }
 }

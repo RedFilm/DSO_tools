@@ -13,46 +13,19 @@ internal sealed class DarkCombo : ComboBox
         BackColor = Theme.InputBg;
         ForeColor = Theme.Text;
         Font = Theme.UiFont;
-        ItemHeight = 26;
+        ItemHeight = 24;
         IntegralHeight = false;
     }
 
     protected override void OnDrawItem(DrawItemEventArgs e)
     {
-        e.DrawBackground();
         if (e.Index < 0) return;
         var selected = (e.State & DrawItemState.Selected) != 0;
-        using var bg = new SolidBrush(selected ? Theme.TabActive : Theme.InputBg);
+        using var bg = new SolidBrush(selected ? Theme.NavActive : Theme.InputBg);
         e.Graphics.FillRectangle(bg, e.Bounds);
         var text = Items[e.Index]?.ToString() ?? "";
         TextRenderer.DrawText(e.Graphics, text, Font, e.Bounds, Theme.Text,
-            TextFormatFlags.Left | TextFormatFlags.VerticalCenter);
-    }
-
-    protected override void WndProc(ref Message m)
-    {
-        base.WndProc(ref m);
-        if (m.Msg == 0x000F) // WM_PAINT
-            DrawChrome();
-    }
-
-    private void DrawChrome()
-    {
-        using var g = CreateGraphics();
-        using var border = new Pen(Theme.Border);
-        using var arrowBg = new SolidBrush(Theme.Orange);
-        g.DrawRectangle(border, 0, 0, Width - 1, Height - 1);
-        var arrowRect = new Rectangle(Width - 28, 1, 27, Height - 2);
-        g.FillRectangle(arrowBg, arrowRect);
-        using var arrow = new Pen(Color.White, 2);
-        var cx = arrowRect.Left + arrowRect.Width / 2;
-        var cy = arrowRect.Top + arrowRect.Height / 2;
-        g.DrawLines(arrow, new[]
-        {
-            new Point(cx - 5, cy - 2),
-            new Point(cx, cy + 3),
-            new Point(cx + 5, cy - 2)
-        });
+            TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis);
     }
 }
 
@@ -92,33 +65,38 @@ internal sealed class DarkSlider : Control
     }
 
     public event EventHandler? ValueChanged;
+    public event EventHandler? DragEnded;
 
     public DarkSlider()
     {
         SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.UserPaint, true);
         Height = 28;
         Cursor = Cursors.Hand;
+        BackColor = Theme.Bg;
     }
 
     protected override void OnPaint(PaintEventArgs e)
     {
         var g = e.Graphics;
-        g.Clear(Theme.Bg);
-        var track = new Rectangle(4, Height / 2 - 4, Width - 8, 8);
+        g.Clear(BackColor);
+        var track = new Rectangle(4, Height / 2 - 3, Width - 8, 6);
         using (var trackBrush = new SolidBrush(Theme.InputBg))
             g.FillRectangle(trackBrush, track);
         using (var border = new Pen(Theme.Border))
             g.DrawRectangle(border, track);
 
         var ratio = (_value - _min) / (float)(_max - _min);
-        var thumbX = track.Left + (int)((track.Width - 10) * ratio);
-        var thumb = new Rectangle(thumbX, 4, 10, Height - 8);
-        using (var thumbBrush = new SolidBrush(Theme.Orange))
-            g.FillRectangle(thumbBrush, thumb);
+        var fillW = (int)((track.Width - 1) * ratio);
+        if (fillW > 0)
+        {
+            using var fill = new SolidBrush(Theme.NavActive);
+            g.FillRectangle(fill, track.Left + 1, track.Top + 1, fillW, track.Height - 1);
+        }
 
-        var text = _value.ToString();
-        TextRenderer.DrawText(g, text, Theme.UiFont, ClientRectangle, Theme.Text,
-            TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
+        var thumbX = track.Left + (int)((track.Width - 10) * ratio);
+        var thumb = new Rectangle(thumbX, 5, 10, Height - 10);
+        using (var thumbBrush = new SolidBrush(Theme.Accent))
+            g.FillRectangle(thumbBrush, thumb);
     }
 
     protected override void OnMouseDown(MouseEventArgs e)
@@ -139,8 +117,10 @@ internal sealed class DarkSlider : Control
     protected override void OnMouseUp(MouseEventArgs e)
     {
         base.OnMouseUp(e);
+        if (!_dragging) return;
         _dragging = false;
         Capture = false;
+        DragEnded?.Invoke(this, EventArgs.Empty);
     }
 
     private void SetFromMouse(int x)
