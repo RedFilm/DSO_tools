@@ -44,6 +44,7 @@ internal sealed class MacroRunner
 
         _ = Task.Run(async () =>
         {
+            var origin = _input.GetCursorPosition();
             try
             {
                 EnsureGameFocused();
@@ -52,6 +53,7 @@ internal sealed class MacroRunner
             catch (OperationCanceledException) { }
             finally
             {
+                _input.MoveTo(origin);
                 lock (_gate)
                 {
                     if (_cts?.Token == token)

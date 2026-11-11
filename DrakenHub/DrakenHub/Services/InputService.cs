@@ -4,7 +4,15 @@ namespace DrakenHub.Services;
 
 internal sealed class InputService
 {
+    public Point GetCursorPosition()
+    {
+        WinApi.GetCursorPos(out var p);
+        return new Point(p.X, p.Y);
+    }
+
     public void MoveTo(int x, int y) => WinApi.SetCursorPos(x, y);
+
+    public void MoveTo(Point p) => MoveTo(p.X, p.Y);
 
     public void LeftClick(int x, int y, int settleMs = 5)
     {
