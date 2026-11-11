@@ -135,15 +135,21 @@ internal sealed class MacroRunner
             var s = _settings.Current;
             var fm = s.FastMount;
             var inv = s.Inventory;
+            var invKey = inv.InventoryHotkey ?? s.GearSwap.InventoryHotkey;
             var delay = Math.Max(10, fm.ClickDelayMs);
-            Press(inv.InventoryHotkey ?? s.GearSwap.InventoryHotkey);
+
+            // 1) Open inventory and equip mount cape
+            Press(invKey);
             await Delay(delay * 2, token);
             await ClickCape(fm, inv, delay, token);
+
+            // 2) Summon mount (inventory stays open — cape slot now holds the original)
             Press(fm.MountHotkey);
-            await Delay(delay * 2, token);
-            Press(inv.InventoryHotkey ?? s.GearSwap.InventoryHotkey);
-            await Delay(delay * 2, token);
+            await Delay(Math.Max(delay * 2, 60), token);
+
+            // 3) Equip original cape back, then close inventory
             await ClickCape(fm, inv, delay, token);
+            Press(invKey);
         });
     }
 
@@ -347,8 +353,9 @@ internal sealed class MacroRunner
         if (fm.CapeCell == null) return;
         var center = InventoryLayout.CellCenter(inv, fm.CapeCell.Row - 1, fm.CapeCell.Col - 1);
         if (center == null) return;
-        _input.RightClick(center.Value.X, center.Value.Y);
-        await Delay(delay, token);
+        // Double LMB equips the cape on the character.
+        _input.DoubleClick(center.Value.X, center.Value.Y, settleMs: 2);
+        await Delay(Math.Max(delay, 40), token);
     }
 
     private void Press(string? keyName)

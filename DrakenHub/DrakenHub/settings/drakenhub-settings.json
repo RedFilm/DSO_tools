@@ -12,7 +12,7 @@
     "emergencyStop": "Home"
   },
   "inventory": {
-    "sellAllHotkey": "OemTilde",
+    "sellAllHotkey": "F2",
     "sellCurrentHotkey": "Left Shift",
     "inventoryHotkey": "I",
     "closeInventory": {
@@ -52,12 +52,12 @@
       "sellClickDelayMs": 40
     },
     "selectedTabs": [
-      false,
       true,
       true,
-      false,
-      false,
-      false,
+      true,
+      true,
+      true,
+      true,
       false,
       false,
       false
@@ -334,6 +334,48 @@
             "colorArgb": -13843949
           }
         ]
+      },
+      {
+        "id": "c3e03740ebae4f66b58ecce782078344",
+        "name": "GreyEs",
+        "enabled": true,
+        "points": [
+          {
+            "offsetX": 37,
+            "offsetY": 31,
+            "colorArgb": -10527393
+          },
+          {
+            "offsetX": 53,
+            "offsetY": 35,
+            "colorArgb": -5526869
+          },
+          {
+            "offsetX": 69,
+            "offsetY": 52,
+            "colorArgb": -7039852
+          },
+          {
+            "offsetX": 40,
+            "offsetY": 66,
+            "colorArgb": -2434086
+          },
+          {
+            "offsetX": 23,
+            "offsetY": 52,
+            "colorArgb": -8158589
+          },
+          {
+            "offsetX": 79,
+            "offsetY": 58,
+            "colorArgb": -10000792
+          },
+          {
+            "offsetX": 41,
+            "offsetY": 75,
+            "colorArgb": -5656919
+          }
+        ]
       }
     ],
     "smelterItem": {
@@ -354,11 +396,11 @@
   "fastMount": {
     "capeCell": {
       "row": 1,
-      "col": 3
+      "col": 2
     },
     "mountHotkey": "O",
-    "fastMountHotkey": null,
-    "clickDelayMs": 30,
+    "fastMountHotkey": "OemTilde",
+    "clickDelayMs": 20,
     "mainPanelHotkey": "F1",
     "jumpTargetPanelHotkey": null,
     "jumpSkillHotkey": null,

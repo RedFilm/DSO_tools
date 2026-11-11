@@ -24,6 +24,19 @@ internal sealed class InputService
         SendMouse(WinApi.MouseeventfRightUp);
     }
 
+    public void DoubleClick(int x, int y, int settleMs = 5, int gapMs = 45)
+    {
+        MoveTo(x, y);
+        Thread.Sleep(settleMs);
+        SendMouse(WinApi.MouseeventfLeftDown);
+        Thread.Sleep(5);
+        SendMouse(WinApi.MouseeventfLeftUp);
+        Thread.Sleep(Math.Max(20, gapMs));
+        SendMouse(WinApi.MouseeventfLeftDown);
+        Thread.Sleep(5);
+        SendMouse(WinApi.MouseeventfLeftUp);
+    }
+
     public void KeyPress(Keys key)
     {
         if (key == Keys.None) return;
