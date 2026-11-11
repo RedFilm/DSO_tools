@@ -61,8 +61,8 @@ public sealed class GridSettings
     public int TabOffsetX { get; set; } = 40;
     public int CrosshairSize { get; set; } = 24;
     public int ScanLevel { get; set; } = 1;
-    public int Columns { get; set; } = 10;
-    public int Rows { get; set; } = 6;
+    public int Columns { get; set; } = 7;
+    public int Rows { get; set; } = 4;
     public int ColorTolerance { get; set; } = 18;
     public int SellClickDelayMs { get; set; } = 40;
 }

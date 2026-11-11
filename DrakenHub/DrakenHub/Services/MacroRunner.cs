@@ -279,7 +279,7 @@ internal sealed class MacroRunner
                 if (clickInsteadOfSell)
                     _input.LeftClick(center.Value.X, center.Value.Y);
                 else
-                    _input.LeftClick(center.Value.X, center.Value.Y);
+                    _input.RightClick(center.Value.X, center.Value.Y);
                 await Delay(delay, token);
             }
         }

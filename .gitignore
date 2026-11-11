@@ -1,0 +1,66 @@
+# Visual Studio / Rider / VS Code
+.vs/
+.idea/
+*.rsuser
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+*.userprefs
+*.DotSettings.user
+
+# Build
+[Bb]in/
+[Oo]bj/
+[Oo]ut/
+[Ll]og/
+[Ll]ogs/
+artifacts/
+publish/
+*.binlog
+
+# .NET / NuGet
+project.lock.json
+project.fragment.lock.json
+*.nupkg
+*.snupkg
+*.nuget.props
+*.nuget.targets
+
+# Test / coverage
+[Tt]est[Rr]esult*/
+*.trx
+*.coverage
+*.coveragexml
+coverage*.json
+coverage*.xml
+coverage*.info
+BenchmarkDotNet.Artifacts/
+
+# Native / intermediate
+*.ilk
+*.meta
+*.obj
+*.iobj
+*.pch
+*.pdb
+*.ipdb
+*.pgc
+*.pgd
+*.tmp
+*.log
+*.cache
+*.VC.db
+*.VC.VC.opendb
+
+# OS
+Thumbs.db
+Desktop.ini
+.DS_Store
+$RECYCLE.BIN/
+
+# Local secrets / env
+*.secrets.json
+.env
+.env.*
+!.env.example
