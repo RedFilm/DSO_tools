@@ -1,14 +1,22 @@
+using System.Drawing.Drawing2D;
+using System.Drawing.Imaging;
 using DrakenHub.Core;
 
 namespace DrakenHub.UI;
 
 internal sealed class OverlayForm : Form
 {
+    private const int LoupeSrc = 17;   // odd: clear center pixel
+    private const int LoupeZoom = 10;
+    private const int LoupeGap = 28;
+
     private readonly int _size;
     private readonly bool _rectangle;
     private Point _cursor;
     private bool _saved;
     private bool _cancelled;
+    private Bitmap? _screen;
+    private Rectangle _virtualScreen;
 
     /// <summary>Cursor position at click (screen coords).</summary>
     public Point? Result { get; private set; }
@@ -30,13 +38,16 @@ internal sealed class OverlayForm : Form
         Cursor = Cursors.Cross;
         Bounds = SystemInformation.VirtualScreen;
         KeyPreview = true;
+        SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.UserPaint | ControlStyles.OptimizedDoubleBuffer, true);
     }
 
     protected override void OnShown(EventArgs e)
     {
         base.OnShown(e);
+        CaptureScreenBehind();
         Capture = true;
         Focus();
+        _cursor = Cursor.Position;
         var timer = new System.Windows.Forms.Timer { Interval = 16 };
         timer.Tick += (_, _) =>
         {
@@ -50,25 +61,120 @@ internal sealed class OverlayForm : Form
         };
         timer.Start();
         Tag = timer;
+        Invalidate();
+    }
+
+    private void CaptureScreenBehind()
+    {
+        _virtualScreen = SystemInformation.VirtualScreen;
+        Opacity = 0;
+        Refresh();
+        _screen?.Dispose();
+        _screen = new Bitmap(_virtualScreen.Width, _virtualScreen.Height, PixelFormat.Format32bppArgb);
+        using (var g = Graphics.FromImage(_screen))
+            g.CopyFromScreen(_virtualScreen.Location, Point.Empty, _virtualScreen.Size);
+        Opacity = 0.85;
     }
 
     protected override void OnPaint(PaintEventArgs e)
     {
         base.OnPaint(e);
+        var g = e.Graphics;
         using var pen = new Pen(Color.Red, 2);
         using var brush = new SolidBrush(Color.FromArgb(80, 255, 0, 0));
         var local = PointToClient(_cursor);
         var half = _size / 2;
         var rect = new Rectangle(local.X - half, local.Y - half, _size, _size);
 
-        e.Graphics.FillRectangle(brush, rect);
-        e.Graphics.DrawRectangle(pen, rect);
+        g.FillRectangle(brush, rect);
+        g.DrawRectangle(pen, rect);
 
         if (!_rectangle)
         {
-            e.Graphics.DrawLine(pen, local.X - half, local.Y, local.X + half, local.Y);
-            e.Graphics.DrawLine(pen, local.X, local.Y - half, local.X, local.Y + half);
+            g.DrawLine(pen, local.X - half, local.Y, local.X + half, local.Y);
+            g.DrawLine(pen, local.X, local.Y - half, local.X, local.Y + half);
         }
+
+        DrawLoupe(g, local);
+    }
+
+    private void DrawLoupe(Graphics g, Point local)
+    {
+        if (_screen == null) return;
+
+        var dstSize = LoupeSrc * LoupeZoom;
+        var loupe = PlaceLoupe(local, dstSize);
+        var halfSrc = LoupeSrc / 2;
+        var srcX = _cursor.X - _virtualScreen.X - halfSrc;
+        var srcY = _cursor.Y - _virtualScreen.Y - halfSrc;
+        var src = new Rectangle(srcX, srcY, LoupeSrc, LoupeSrc);
+
+        g.SmoothingMode = SmoothingMode.None;
+        g.InterpolationMode = InterpolationMode.NearestNeighbor;
+        g.PixelOffsetMode = PixelOffsetMode.Half;
+        g.CompositingMode = CompositingMode.SourceOver;
+
+        using (var bg = new SolidBrush(Color.FromArgb(220, 20, 20, 24)))
+            g.FillRectangle(bg, loupe);
+
+        // Clip to loupe so out-of-bounds edges stay dark
+        var state = g.Save();
+        g.SetClip(loupe);
+        g.DrawImage(_screen, loupe, src, GraphicsUnit.Pixel);
+        g.Restore(state);
+
+        // Center pixel outline
+        var cx = loupe.X + halfSrc * LoupeZoom;
+        var cy = loupe.Y + halfSrc * LoupeZoom;
+        using (var pixelPen = new Pen(Color.Lime, 2))
+            g.DrawRectangle(pixelPen, cx, cy, LoupeZoom, LoupeZoom);
+
+        using (var border = new Pen(Color.White, 2))
+            g.DrawRectangle(border, loupe);
+
+        var color = SampleScreen(_cursor.X, _cursor.Y);
+        var label = $"{color.R},{color.G},{color.B}";
+        using var font = new Font("Segoe UI", 9f, FontStyle.Bold);
+        var labelSize = g.MeasureString(label, font);
+        var labelRect = new RectangleF(
+            loupe.X,
+            loupe.Bottom + 4,
+            Math.Max(loupe.Width, labelSize.Width + 10),
+            labelSize.Height + 4);
+        if (labelRect.Bottom > ClientSize.Height)
+            labelRect.Y = loupe.Y - labelSize.Height - 6;
+        using (var labelBg = new SolidBrush(Color.FromArgb(200, 0, 0, 0)))
+            g.FillRectangle(labelBg, labelRect);
+        using (var labelBrush = new SolidBrush(Color.White))
+            g.DrawString(label, font, labelBrush, labelRect.X + 4, labelRect.Y + 1);
+
+        using var swatch = new SolidBrush(color);
+        g.FillRectangle(swatch, loupe.Right - 18, labelRect.Y, 14, labelRect.Height);
+        using (var swatchPen = new Pen(Color.White))
+            g.DrawRectangle(swatchPen, loupe.Right - 18, (int)labelRect.Y, 14, (int)labelRect.Height);
+    }
+
+    private Rectangle PlaceLoupe(Point local, int dstSize)
+    {
+        var x = local.X + LoupeGap;
+        var y = local.Y + LoupeGap;
+        if (x + dstSize > ClientSize.Width - 8)
+            x = local.X - LoupeGap - dstSize;
+        if (y + dstSize + 28 > ClientSize.Height - 8)
+            y = local.Y - LoupeGap - dstSize;
+        x = Math.Clamp(x, 8, Math.Max(8, ClientSize.Width - dstSize - 8));
+        y = Math.Clamp(y, 8, Math.Max(8, ClientSize.Height - dstSize - 8));
+        return new Rectangle(x, y, dstSize, dstSize);
+    }
+
+    private Color SampleScreen(int screenX, int screenY)
+    {
+        if (_screen == null) return Color.Black;
+        var x = screenX - _virtualScreen.X;
+        var y = screenY - _virtualScreen.Y;
+        if (x < 0 || y < 0 || x >= _screen.Width || y >= _screen.Height)
+            return Color.Black;
+        return _screen.GetPixel(x, y);
     }
 
     protected override void OnMouseDown(MouseEventArgs e)
@@ -105,6 +211,8 @@ internal sealed class OverlayForm : Form
             timer.Stop();
             timer.Dispose();
         }
+        _screen?.Dispose();
+        _screen = null;
         base.OnFormClosed(e);
     }
 }

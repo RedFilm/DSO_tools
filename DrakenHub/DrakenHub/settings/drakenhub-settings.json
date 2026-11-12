@@ -3,8 +3,8 @@
   "resolutionPreset": "2560x1440",
   "windowWidth": 1447,
   "windowHeight": 975,
-  "windowX": 2588,
-  "windowY": 103,
+  "windowX": 2962,
+  "windowY": 228,
   "gameWindowTitleContains": "Drakensang Online",
   "windowHotkeys": {
     "hideShow": "Insert",
@@ -60,7 +60,7 @@
       true,
       false,
       false,
-      false
+      true
     ],
     "rarities": [
       {
@@ -387,11 +387,11 @@
   },
   "autoClicker": {
     "leftMode": "hold",
-    "leftHotkey": null,
-    "leftDelayMs": 80,
+    "leftHotkey": "R",
+    "leftDelayMs": 50,
     "rightMode": "hold",
-    "rightHotkey": null,
-    "rightDelayMs": 30
+    "rightHotkey": "G",
+    "rightDelayMs": 50
   },
   "fastMount": {
     "capeCell": {
