@@ -37,8 +37,8 @@ internal sealed class ColorScanService(InputService input)
     public List<(int Row, int Col, Point Center)> FindMatches(InventorySettings inv, bool includeOtherItems, GridSnapshot? snapshot)
     {
         var result = new List<(int, int, Point)>();
-        for (var row = 0; row < inv.Grid.Rows; row++)
-        for (var col = 0; col < inv.Grid.Columns; col++)
+        for (var row = 0; row < InventoryLayout.Rows; row++)
+        for (var col = 0; col < InventoryLayout.Columns; col++)
         {
             if (!CellMatchesAny(inv, row, col, includeOtherItems, snapshot))
                 continue;
@@ -75,8 +75,8 @@ internal sealed class ColorScanService(InputService input)
         foreach (var item in inv.OtherItems.Where(x => x.Enabled))
             Accrue(item.Points);
 
-        var gridW = g.Columns * g.CellSize + Math.Max(0, g.Columns - 1) * g.GapX;
-        var gridH = g.Rows * g.CellSize + Math.Max(0, g.Rows - 1) * g.GapY;
+        var gridW = InventoryLayout.Columns * g.CellSize + Math.Max(0, InventoryLayout.Columns - 1) * g.GapX;
+        var gridH = InventoryLayout.Rows * g.CellSize + Math.Max(0, InventoryLayout.Rows - 1) * g.GapY;
         var left = inv.FirstCell.X + Math.Min(0, minOx) - 2;
         var top = inv.FirstCell.Y + Math.Min(0, minOy) - 2;
         var width = Math.Max(1, gridW + Math.Max(0, maxOx) - Math.Min(0, minOx) + 4);

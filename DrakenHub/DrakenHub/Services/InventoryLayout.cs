@@ -4,6 +4,9 @@ namespace DrakenHub.Services;
 
 internal static class InventoryLayout
 {
+    public const int Columns = 7;
+    public const int Rows = 4;
+
     public static Point? CellCenter(InventorySettings inv, int row, int col)
     {
         if (inv.FirstCell == null) return null;
@@ -34,8 +37,8 @@ internal static class InventoryLayout
     {
         if (inv.FirstCell == null) return null;
         var g = inv.Grid;
-        for (var row = 0; row < g.Rows; row++)
-        for (var col = 0; col < g.Columns; col++)
+        for (var row = 0; row < Rows; row++)
+        for (var col = 0; col < Columns; col++)
         {
             var ox = inv.FirstCell.X + col * (g.CellSize + g.GapX);
             var oy = inv.FirstCell.Y + row * (g.CellSize + g.GapY);
@@ -54,8 +57,8 @@ internal static class InventoryLayout
         if (inv.FirstCell != null)
         {
             var g = inv.Grid;
-            for (var row = 0; row < g.Rows; row++)
-            for (var col = 0; col < g.Columns; col++)
+            for (var row = 0; row < Rows; row++)
+            for (var col = 0; col < Columns; col++)
             {
                 var ox = inv.FirstCell.X + col * (g.CellSize + g.GapX);
                 var oy = inv.FirstCell.Y + row * (g.CellSize + g.GapY);

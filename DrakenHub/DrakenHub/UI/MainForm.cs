@@ -505,8 +505,8 @@ internal sealed partial class MainForm : Form
         var row = Math.Max(0, (screen.Y - inv.FirstCell.Y) / Math.Max(1, g.CellSize + g.GapY));
         return new CellRef
         {
-            Row = Math.Clamp(row + 1, 1, g.Rows),
-            Col = Math.Clamp(col + 1, 1, g.Columns)
+            Row = Math.Clamp(row + 1, 1, InventoryLayout.Rows),
+            Col = Math.Clamp(col + 1, 1, InventoryLayout.Columns)
         };
     }
 

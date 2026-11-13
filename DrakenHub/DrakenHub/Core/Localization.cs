@@ -38,8 +38,6 @@ internal sealed class Localization
         ["grid.tabx"] = ("Смещение вкладок X", "Tab offset X"),
         ["grid.cross"] = ("Размер прицела", "Crosshair size"),
         ["grid.scan"] = ("Уровень сканирования", "Scan level"),
-        ["grid.cols"] = ("Колонки", "Columns"),
-        ["grid.rows"] = ("Ряды", "Rows"),
         ["grid.tol"] = ("Допуск цвета", "Color tolerance"),
         ["btn.addPoint"] = ("Добавить точку", "Add point"),
         ["btn.delLast"] = ("Удалить последний", "Delete last"),
