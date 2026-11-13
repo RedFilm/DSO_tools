@@ -159,6 +159,7 @@ internal sealed partial class MainForm
         NumRow("grid.tabx", () => g.TabOffsetX, v => g.TabOffsetX = v, 10, 120);
         NumRow("grid.cross", () => g.CrosshairSize, v => g.CrosshairSize = v, 8, 80);
         NumRow("grid.scan", () => g.ScanLevel, v => g.ScanLevel = v, 1, 2);
+        NumRow("grid.sellDelay", () => g.SellClickDelayMs, v => g.SellClickDelayMs = v, 8, 500);
         NumRow("grid.tol", () => g.ColorTolerance, v => g.ColorTolerance = v, 0, 80);
 
         var wrap = UiFactory.VStack();
