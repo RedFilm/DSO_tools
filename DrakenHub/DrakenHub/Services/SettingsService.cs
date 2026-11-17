@@ -81,13 +81,35 @@ internal sealed class SettingsService
     private static void EnsureIntegrity(AppSettings s)
     {
         s.Inventory.SelectedTabs = NormalizeTabs(s.Inventory.SelectedTabs);
-        if (s.Inventory.Rarities.Count == 0)
-            s.Inventory.Rarities = RarityProfile.CreateDefaults();
+        s.Inventory.Rarities = NormalizeRarities(s.Inventory.Rarities);
         if (s.AutoCast.Rows.Count < 5)
         {
             while (s.AutoCast.Rows.Count < 5)
                 s.AutoCast.Rows.Add(new AutoCastRow { SkillHotkey = $"{s.AutoCast.Rows.Count + 1}", IntervalMs = 2000 });
         }
+    }
+
+    /// <summary>
+    /// Merge saved Enabled flags onto the built-in rarity list; drop legacy per-rarity color points.
+    /// </summary>
+    private static List<RarityProfile> NormalizeRarities(List<RarityProfile>? saved)
+    {
+        var defaults = RarityProfile.CreateDefaults();
+        if (saved == null || saved.Count == 0)
+            return defaults;
+
+        foreach (var def in defaults)
+        {
+            var match = saved.FirstOrDefault(r =>
+                r.Id.Equals(def.Id, StringComparison.OrdinalIgnoreCase) ||
+                r.Name.Equals(def.Name, StringComparison.OrdinalIgnoreCase));
+            if (match != null)
+                def.Enabled = match.Enabled;
+            def.Points = [];
+            if (!QuestionMarkTemplates.HasTemplate(def.Id))
+                def.Enabled = false;
+        }
+        return defaults;
     }
 
     private static bool[] NormalizeTabs(bool[]? tabs)

@@ -212,37 +212,35 @@ internal sealed partial class MainForm
         {
             host.SuspendLayout();
             host.Controls.Clear();
+            var hint = UiFactory.Lbl(_loc.T("rarity.hint"), true);
+            hint.MaximumSize = new Size(520, 0);
+            host.Controls.Add(hint);
+
             foreach (var rarity in _settings.Current.Inventory.Rarities)
             {
                 var r = rarity;
-                var colorBox = new Panel { Width = 22, Height = 22, BackColor = Color.FromArgb(r.DisplayColorArgb) };
-                var enabled = UiFactory.Check(r.Name, r.Enabled);
-                enabled.Width = 110;
-                enabled.CheckedChanged += (_, _) => { r.Enabled = enabled.Checked; Persist(grid: true); };
-                var pointsLabel = UiFactory.Lbl($"{r.Points.Count} {_loc.T("points")}", true);
-                pointsLabel.Width = 72;
-
-                var add = UiFactory.Btn(_loc.T("btn.addPoint"), BtnKind.Warn);
-                add.Click += (_, _) => { AddColorPoint(r.Points); Rebuild(); UiFactory.Relayout(host); };
-                var del = UiFactory.Btn(_loc.T("btn.delLast"), BtnKind.Danger);
-                del.Click += (_, _) =>
+                var hasTemplate = QuestionMarkTemplates.HasTemplate(r.Id);
+                var colorBox = new Panel
                 {
-                    if (r.Points.Count > 0) r.Points.RemoveAt(r.Points.Count - 1);
-                    Persist(grid: true);
-                    Rebuild();
-                    UiFactory.Relayout(host);
+                    Width = 22,
+                    Height = 22,
+                    BackColor = Color.FromArgb(r.DisplayColorArgb),
+                    Margin = new Padding(0, 4, 6, 0)
                 };
-                var clear = UiFactory.Btn(_loc.T("btn.clear"), BtnKind.Warn);
-                clear.Click += (_, _) =>
+                var label = hasTemplate ? r.Name : $"{r.Name} ({_loc.T("rarity.noTemplate")})";
+                var enabled = UiFactory.Check(label, r.Enabled);
+                enabled.Width = 280;
+                enabled.Enabled = hasTemplate;
+                if (!hasTemplate)
+                    enabled.Checked = false;
+                enabled.CheckedChanged += (_, _) =>
                 {
-                    r.Points.Clear();
+                    if (!hasTemplate) return;
+                    r.Enabled = enabled.Checked;
                     Persist(grid: true);
-                    Rebuild();
-                    UiFactory.Relayout(host);
                 };
 
-                host.Controls.Add(UiFactory.ActionRow(
-                    (colorBox, 24), (enabled, 120), (add, 0), (del, 0), (clear, 0), (pointsLabel, 72)));
+                host.Controls.Add(UiFactory.ActionRow((colorBox, 28), (enabled, 300)));
             }
             host.ResumeLayout(false);
             UiFactory.Relayout(host);

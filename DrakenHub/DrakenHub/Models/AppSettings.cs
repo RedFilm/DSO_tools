@@ -74,16 +74,19 @@ public sealed class RarityProfile
     public string Name { get; set; } = "";
     public bool Enabled { get; set; } = true;
     public int DisplayColorArgb { get; set; }
+
+    /// <summary>Legacy field kept for settings JSON compatibility; rarities use built-in "?" templates.</summary>
     public List<RelativeColorPoint> Points { get; set; } = [];
 
     public static List<RarityProfile> CreateDefaults() =>
     [
-        new() { Id = "uncommon", Name = "Uncommon", DisplayColorArgb = Color.LimeGreen.ToArgb() },
-        new() { Id = "magic", Name = "Magic", DisplayColorArgb = Color.DodgerBlue.ToArgb() },
-        new() { Id = "rare", Name = "Rare", DisplayColorArgb = Color.Magenta.ToArgb() },
-        new() { Id = "epic", Name = "Epic", DisplayColorArgb = Color.Orange.ToArgb() },
-        new() { Id = "unique", Name = "Unique", DisplayColorArgb = Color.Gold.ToArgb() },
-        new() { Id = "set", Name = "Set", DisplayColorArgb = Color.Cyan.ToArgb() },
+        new() { Id = "uncommon", Name = "Uncommon", DisplayColorArgb = Color.FromArgb(141, 176, 125).ToArgb(), Enabled = true },
+        new() { Id = "magic", Name = "Magic", DisplayColorArgb = Color.FromArgb(66, 138, 206).ToArgb(), Enabled = true },
+        new() { Id = "rare", Name = "Rare", DisplayColorArgb = Color.FromArgb(181, 52, 99).ToArgb(), Enabled = true },
+        new() { Id = "epic", Name = "Epic", DisplayColorArgb = Color.FromArgb(255, 149, 60).ToArgb(), Enabled = true },
+        new() { Id = "unique", Name = "Unique", DisplayColorArgb = Color.FromArgb(255, 255, 0).ToArgb(), Enabled = true },
+        // Cyan/Set template will be added later when a screenshot is available.
+        new() { Id = "set", Name = "Set", DisplayColorArgb = Color.Cyan.ToArgb(), Enabled = false },
     ];
 }
 

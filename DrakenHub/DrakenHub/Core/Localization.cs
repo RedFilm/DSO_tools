@@ -21,6 +21,8 @@ internal sealed class Localization
         ["section.grid"] = ("Настройки сетки", "Grid settings"),
         ["section.tabs"] = ("Вкладки", "Tabs"),
         ["section.rarities"] = ("Редкости предметов", "Item rarities"),
+        ["rarity.hint"] = ("Поиск неопознанных предметов по шаблону знака «?» внутри ячейки. Голубая (Set) — позже.", "Finds unidentified items by the «?» template inside each cell. Cyan (Set) comes later."),
+        ["rarity.noTemplate"] = ("нет шаблона", "no template"),
         ["section.other"] = ("Другие предметы", "Other items"),
         ["btn.inventory"] = ("Инвентарь", "Inventory"),
         ["btn.closeInv"] = ("Закрытие инвентаря", "Close inventory"),

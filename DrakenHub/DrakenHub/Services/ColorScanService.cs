@@ -6,33 +6,29 @@ namespace DrakenHub.Services;
 
 internal sealed class ColorScanService(InputService input)
 {
+    /// <summary>Minimum share of inset cell pixels that must match rarity color.</summary>
+    private const double MinColorCoverage = 0.035;
+
+    /// <summary>
+    /// Solid icons (gems etc.) fill too much of the cell vs a "?" glyph.
+    /// Real "?" screenshots peak around ~11–12%; keep headroom for glow/AA.
+    /// </summary>
+    private const double MaxColorCoverage = 0.16;
+
+    /// <summary>Minimum absolute matching pixels (protects tiny cells).</summary>
+    private const int MinColorPixels = 18;
+
+    /// <summary>Share of scaled "?" shape samples that must match.</summary>
+    private const double MinShapeHitRatio = 0.40;
+
+    /// <summary>Max share of interior hole samples that may still match (false-positive guard).</summary>
+    private const double MaxHoleHitRatio = 0.28;
+
     public bool CellMatchesAny(InventorySettings inv, int row, int col, bool includeOtherItems)
-        => CellMatchesAny(inv, row, col, includeOtherItems, snapshot: null);
+        => TryFindClickPoint(inv, row, col, includeOtherItems, snapshot: null, out _);
 
     public bool CellMatchesAny(InventorySettings inv, int row, int col, bool includeOtherItems, GridSnapshot? snapshot)
-    {
-        var origin = InventoryLayout.CellOrigin(inv, row, col);
-        if (origin == null) return false;
-
-        foreach (var rarity in inv.Rarities)
-        {
-            if (!rarity.Enabled || rarity.Points.Count == 0) continue;
-            if (Matches(origin.Value, rarity.Points, inv.Grid.ColorTolerance, snapshot))
-                return true;
-        }
-
-        if (includeOtherItems)
-        {
-            foreach (var item in inv.OtherItems)
-            {
-                if (!item.Enabled || item.Points.Count == 0) continue;
-                if (Matches(origin.Value, item.Points, inv.Grid.ColorTolerance, snapshot))
-                    return true;
-            }
-        }
-
-        return false;
-    }
+        => TryFindClickPoint(inv, row, col, includeOtherItems, snapshot, out _);
 
     public List<(int Row, int Col, Point Center)> FindMatches(InventorySettings inv, bool includeOtherItems, GridSnapshot? snapshot)
     {
@@ -40,16 +36,164 @@ internal sealed class ColorScanService(InputService input)
         for (var row = 0; row < InventoryLayout.Rows; row++)
         for (var col = 0; col < InventoryLayout.Columns; col++)
         {
-            if (!CellMatchesAny(inv, row, col, includeOtherItems, snapshot))
+            if (!TryFindClickPoint(inv, row, col, includeOtherItems, snapshot, out var center))
                 continue;
-            var center = InventoryLayout.CellCenter(inv, row, col);
-            if (center == null) continue;
-            result.Add((row, col, center.Value));
+            result.Add((row, col, center));
         }
         return result;
     }
 
-    /// <summary>One screen grab for the whole inventory grid (+ rarity point offsets).</summary>
+    /// <summary>
+    /// Searches the cell ROI for an enabled rarity "?" template (blob + shape),
+    /// otherwise falls back to OtherItems multi-point profiles.
+    /// Returns the click center of the best match.
+    /// </summary>
+    public bool TryFindClickPoint(
+        InventorySettings inv,
+        int row,
+        int col,
+        bool includeOtherItems,
+        GridSnapshot? snapshot,
+        out Point center)
+    {
+        center = default;
+        var origin = InventoryLayout.CellOrigin(inv, row, col);
+        if (origin == null) return false;
+
+        var cellSize = inv.Grid.CellSize;
+        if (TryFindQuestionMark(inv, origin.Value, cellSize, snapshot, out center))
+            return true;
+
+        if (includeOtherItems && TryMatchOtherItems(inv, origin.Value, snapshot, out center))
+            return true;
+
+        return false;
+    }
+
+    private bool TryFindQuestionMark(
+        InventorySettings inv,
+        Point origin,
+        int cellSize,
+        GridSnapshot? snapshot,
+        out Point center)
+    {
+        center = default;
+        foreach (var rarity in inv.Rarities)
+        {
+            if (!rarity.Enabled) continue;
+            var template = QuestionMarkTemplates.Find(rarity.Id);
+            if (template == null) continue;
+            if (TryMatchTemplateInCell(origin, cellSize, template, snapshot, out center))
+                return true;
+        }
+        return false;
+    }
+
+    private bool TryMatchTemplateInCell(
+        Point origin,
+        int cellSize,
+        QuestionMarkTemplate template,
+        GridSnapshot? snapshot,
+        out Point center)
+    {
+        center = default;
+        if (cellSize < 12) return false;
+
+        // Ignore ornate border; search the inner icon area.
+        var inset = Math.Max(2, cellSize / 10);
+        var left = origin.X + inset;
+        var top = origin.Y + inset;
+        var right = origin.X + cellSize - inset;
+        var bottom = origin.Y + cellSize - inset;
+        if (right <= left || bottom <= top) return false;
+
+        var area = (right - left) * (bottom - top);
+        var minPixels = Math.Max(MinColorPixels, (int)(area * MinColorCoverage));
+        var maxPixels = Math.Max(minPixels + 1, (int)(area * MaxColorCoverage));
+
+        long sumX = 0, sumY = 0;
+        var count = 0;
+        for (var y = top; y < bottom; y++)
+        for (var x = left; x < right; x++)
+        {
+            var c = Sample(x, y, snapshot);
+            if (!template.MatchesColor(c)) continue;
+            sumX += x;
+            sumY += y;
+            count++;
+            if (count > maxPixels) return false; // solid fill (gem/icon), not a "?"
+        }
+
+        if (count < minPixels) return false;
+
+        var cx = (int)(sumX / count);
+        var cy = (int)(sumY / count);
+        var scale = cellSize / QuestionMarkTemplates.ReferenceCellSize;
+
+        // Verify "?" stroke around the color blob centroid.
+        var shape = QuestionMarkTemplates.ShapeOffsets;
+        var need = Math.Max(8, (int)Math.Ceiling(shape.Length * MinShapeHitRatio));
+        var hits = CountOffsetHits(cx, cy, scale, shape, left, top, right, bottom, template, snapshot);
+        if (hits < need) return false;
+
+        // Holes inside the "?" must stay mostly empty — rejects solid yellow/orange icons.
+        var holes = QuestionMarkTemplates.HoleOffsets;
+        var maxHoles = Math.Max(2, (int)Math.Floor(holes.Length * MaxHoleHitRatio));
+        var holeHits = CountOffsetHits(cx, cy, scale, holes, left, top, right, bottom, template, snapshot);
+        if (holeHits > maxHoles) return false;
+
+        center = new Point(cx, cy);
+        return true;
+    }
+
+    private int CountOffsetHits(
+        int cx,
+        int cy,
+        float scale,
+        Point[] offsets,
+        int left,
+        int top,
+        int right,
+        int bottom,
+        QuestionMarkTemplate template,
+        GridSnapshot? snapshot)
+    {
+        var hits = 0;
+        foreach (var offset in offsets)
+        {
+            var sx = cx + (int)Math.Round(offset.X * scale);
+            var sy = cy + (int)Math.Round(offset.Y * scale);
+            if (sx < left || sx >= right || sy < top || sy >= bottom)
+                continue;
+            if (template.MatchesColor(Sample(sx, sy, snapshot)))
+                hits++;
+        }
+        return hits;
+    }
+
+    private bool TryMatchOtherItems(
+        InventorySettings inv,
+        Point origin,
+        GridSnapshot? snapshot,
+        out Point center)
+    {
+        center = default;
+        foreach (var item in inv.OtherItems)
+        {
+            if (!item.Enabled || item.Points.Count == 0) continue;
+            if (!Matches(origin, item.Points, inv.Grid.ColorTolerance, snapshot))
+                continue;
+
+            // Click near the average of matched profile points.
+            var ax = origin.X + (int)item.Points.Average(p => p.OffsetX);
+            var ay = origin.Y + (int)item.Points.Average(p => p.OffsetY);
+            center = new Point(ax, ay);
+            return true;
+        }
+        return false;
+    }
+
+    /// <summary>One screen grab for the whole inventory grid (+ OtherItems point offsets).</summary>
     public static GridSnapshot? CaptureGrid(InventorySettings inv)
     {
         if (inv.FirstCell == null) return null;
@@ -70,8 +214,6 @@ internal sealed class ColorScanService(InputService input)
             }
         }
 
-        foreach (var r in inv.Rarities.Where(x => x.Enabled))
-            Accrue(r.Points);
         foreach (var item in inv.OtherItems.Where(x => x.Enabled))
             Accrue(item.Points);
 
