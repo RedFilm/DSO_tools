@@ -18,8 +18,14 @@ internal sealed class ColorScanService(InputService input)
     /// <summary>Minimum absolute matching pixels (protects tiny cells).</summary>
     private const int MinColorPixels = 18;
 
-    /// <summary>Share of scaled "?" shape samples that must match.</summary>
-    private const double MinShapeHitRatio = 0.40;
+    /// <summary>Share of scaled "?" stroke samples that must match color.</summary>
+    private const double MinShapeHitRatio = 0.45;
+
+    /// <summary>
+    /// Fraction of the color blob that must lie on/near the scaled "?" stroke.
+    /// Rejects blue/yellow auras and solid icons that only accidentally cover some stroke samples.
+    /// </summary>
+    private const double MinStrokePrecision = 0.72;
 
     /// <summary>Max share of interior hole samples that may still match (false-positive guard).</summary>
     private const double MaxHoleHitRatio = 0.28;
@@ -111,39 +117,68 @@ internal sealed class ColorScanService(InputService input)
         var minPixels = Math.Max(MinColorPixels, (int)(area * MinColorCoverage));
         var maxPixels = Math.Max(minPixels + 1, (int)(area * MaxColorCoverage));
 
+        var blob = new List<Point>(Math.Min(area, 2048));
         long sumX = 0, sumY = 0;
-        var count = 0;
         for (var y = top; y < bottom; y++)
         for (var x = left; x < right; x++)
         {
             var c = Sample(x, y, snapshot);
             if (!template.MatchesColor(c)) continue;
+            blob.Add(new Point(x, y));
             sumX += x;
             sumY += y;
-            count++;
-            if (count > maxPixels) return false; // solid fill (gem/icon), not a "?"
+            if (blob.Count > maxPixels) return false; // solid fill (gem/icon), not a "?"
         }
 
-        if (count < minPixels) return false;
+        if (blob.Count < minPixels) return false;
 
-        var cx = (int)(sumX / count);
-        var cy = (int)(sumY / count);
+        var cx = (int)(sumX / blob.Count);
+        var cy = (int)(sumY / blob.Count);
+        // Scale shape from the 105px reference cell to the live CellSize (resolution-independent).
         var scale = cellSize / QuestionMarkTemplates.ReferenceCellSize;
 
-        // Verify "?" stroke around the color blob centroid.
         var shape = QuestionMarkTemplates.ShapeOffsets;
         var need = Math.Max(8, (int)Math.Ceiling(shape.Length * MinShapeHitRatio));
         var hits = CountOffsetHits(cx, cy, scale, shape, left, top, right, bottom, template, snapshot);
         if (hits < need) return false;
 
-        // Holes inside the "?" must stay mostly empty — rejects solid yellow/orange icons.
         var holes = QuestionMarkTemplates.HoleOffsets;
         var maxHoles = Math.Max(2, (int)Math.Floor(holes.Length * MaxHoleHitRatio));
         var holeHits = CountOffsetHits(cx, cy, scale, holes, left, top, right, bottom, template, snapshot);
         if (holeHits > maxHoles) return false;
 
+        // Most of the color blob must sit on the "?" stroke (not a random blue/yellow aura).
+        if (!PassesStrokePrecision(blob, cx, cy, scale, shape))
+            return false;
+
         center = new Point(cx, cy);
         return true;
+    }
+
+    /// <summary>
+    /// Precision = share of blob pixels within a scale-aware radius of any stroke sample.
+    /// </summary>
+    private static bool PassesStrokePrecision(List<Point> blob, int cx, int cy, float scale, Point[] shape)
+    {
+        var radius = Math.Max(2.0, 3.5 * scale);
+        var radiusSq = radius * radius;
+        var near = 0;
+        for (var i = 0; i < blob.Count; i++)
+        {
+            var p = blob[i];
+            for (var s = 0; s < shape.Length; s++)
+            {
+                var dx = p.X - (cx + shape[s].X * scale);
+                var dy = p.Y - (cy + shape[s].Y * scale);
+                if (dx * dx + dy * dy <= radiusSq)
+                {
+                    near++;
+                    break;
+                }
+            }
+        }
+
+        return (double)near / blob.Count >= MinStrokePrecision;
     }
 
     private int CountOffsetHits(

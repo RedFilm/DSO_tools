@@ -85,8 +85,7 @@ public sealed class RarityProfile
         new() { Id = "rare", Name = "Rare", DisplayColorArgb = Color.FromArgb(181, 52, 99).ToArgb(), Enabled = true },
         new() { Id = "epic", Name = "Epic", DisplayColorArgb = Color.FromArgb(255, 149, 60).ToArgb(), Enabled = true },
         new() { Id = "unique", Name = "Unique", DisplayColorArgb = Color.FromArgb(255, 255, 0).ToArgb(), Enabled = true },
-        // Cyan/Set template will be added later when a screenshot is available.
-        new() { Id = "set", Name = "Set", DisplayColorArgb = Color.Cyan.ToArgb(), Enabled = false },
+        new() { Id = "set", Name = "Set", DisplayColorArgb = Color.FromArgb(59, 187, 220).ToArgb(), Enabled = true },
     ];
 }
 

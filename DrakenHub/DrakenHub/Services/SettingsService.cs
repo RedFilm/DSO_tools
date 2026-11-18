@@ -108,6 +108,8 @@ internal sealed class SettingsService
             def.Points = [];
             if (!QuestionMarkTemplates.HasTemplate(def.Id))
                 def.Enabled = false;
+            else if (def.Id.Equals("set", StringComparison.OrdinalIgnoreCase) && match is { Enabled: false })
+                def.Enabled = true; // previously disabled only because Set template was missing
         }
         return defaults;
     }
