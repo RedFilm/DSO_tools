@@ -66,10 +66,7 @@ internal sealed partial class MainForm : Form
         ForeColor = Theme.Text;
         Font = Theme.UiFont;
         MinimumSize = new Size(980, 640);
-        if (_settings.Current.WindowWidth < 980) _settings.Current.WindowWidth = 1120;
-        if (_settings.Current.WindowHeight < 640) _settings.Current.WindowHeight = 760;
-        Size = new Size(_settings.Current.WindowWidth, _settings.Current.WindowHeight);
-        Location = new Point(_settings.Current.WindowX, _settings.Current.WindowY);
+        ApplySavedBounds();
         KeyPreview = true;
         DoubleBuffered = true;
 
@@ -105,10 +102,7 @@ internal sealed partial class MainForm : Form
                 _persistTimer.Stop();
                 FlushPersist();
             }
-            _settings.Current.WindowWidth = Width;
-            _settings.Current.WindowHeight = Height;
-            _settings.Current.WindowX = Left;
-            _settings.Current.WindowY = Top;
+            SaveWindowBounds();
             _settings.Save();
             _hotkeys.Dispose();
             _autoClicker.Dispose();
@@ -116,6 +110,67 @@ internal sealed partial class MainForm : Form
             _persistTimer.Dispose();
             _gridOverlay?.Close();
         };
+    }
+
+    /// <summary>
+    /// Restore size/position from settings, but never open minimized or off any screen
+    /// (Windows reports -32000,-32000 while minimized).
+    /// </summary>
+    private void ApplySavedBounds()
+    {
+        var s = _settings.Current;
+        var w = Math.Max(MinimumSize.Width, s.WindowWidth < 980 ? 1120 : s.WindowWidth);
+        var h = Math.Max(MinimumSize.Height, s.WindowHeight < 640 ? 760 : s.WindowHeight);
+        var x = s.WindowX;
+        var y = s.WindowY;
+
+        // Minimized / invalid sentinel from a previous session.
+        if (x <= -10000 || y <= -10000 || w < MinimumSize.Width || h < MinimumSize.Height)
+        {
+            StartPosition = FormStartPosition.CenterScreen;
+            Size = new Size(Math.Max(1120, MinimumSize.Width), Math.Max(760, MinimumSize.Height));
+            return;
+        }
+
+        var bounds = new Rectangle(x, y, w, h);
+        if (!IsReasonablyOnScreen(bounds))
+        {
+            StartPosition = FormStartPosition.CenterScreen;
+            Size = new Size(w, h);
+            return;
+        }
+
+        StartPosition = FormStartPosition.Manual;
+        Size = new Size(w, h);
+        Location = new Point(x, y);
+    }
+
+    private void SaveWindowBounds()
+    {
+        // Don't persist minimized / hidden-offscreen coordinates.
+        if (WindowState == FormWindowState.Minimized || Left <= -10000 || Top <= -10000)
+            return;
+
+        var bounds = new Rectangle(Left, Top, Width, Height);
+        if (!IsReasonablyOnScreen(bounds))
+            return;
+
+        _settings.Current.WindowWidth = Width;
+        _settings.Current.WindowHeight = Height;
+        _settings.Current.WindowX = Left;
+        _settings.Current.WindowY = Top;
+    }
+
+    private static bool IsReasonablyOnScreen(Rectangle bounds)
+    {
+        const int minVisible = 80;
+        foreach (var screen in Screen.AllScreens)
+        {
+            var overlap = Rectangle.Intersect(screen.WorkingArea, bounds);
+            if (overlap.Width >= minVisible && overlap.Height >= minVisible)
+                return true;
+        }
+        return false;
     }
 
     protected override void WndProc(ref Message m)

@@ -452,39 +452,43 @@ internal sealed partial class MainForm
         };
 
         var settings = UiFactory.VStack();
-        var track = UiFactory.Slider(1, 200, fm.ClickDelayMs);
-        var val = UiFactory.Lbl(fm.ClickDelayMs.ToString());
-        var delayLabel = UiFactory.Lbl(_loc.T("delay"), true);
-        track.ValueChanged += (_, _) =>
+
+        TableLayoutPanel DelayRow(string labelKey, Func<int> get, Action<int> set, int min, int max)
         {
-            fm.ClickDelayMs = track.Value;
-            val.Text = track.Value.ToString();
-        };
-        track.DragEnded += (_, _) => Persist();
-        var sRow = new TableLayoutPanel
-        {
-            ColumnCount = 3,
-            RowCount = 1,
-            Height = 36,
-            BackColor = Color.Transparent
-        };
-        sRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-        sRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 48));
-        sRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 180));
-        track.Dock = DockStyle.Fill;
-        val.Dock = DockStyle.Fill;
-        delayLabel.Dock = DockStyle.Fill;
-        sRow.Controls.Add(track, 0, 0);
-        sRow.Controls.Add(val, 1, 0);
-        sRow.Controls.Add(delayLabel, 2, 0);
-        settings.Controls.Add(sRow);
+            var track = UiFactory.Slider(min, max, Math.Clamp(get(), min, max));
+            var val = UiFactory.Lbl(track.Value.ToString());
+            var delayLabel = UiFactory.Lbl(_loc.T(labelKey), true);
+            track.ValueChanged += (_, _) =>
+            {
+                set(track.Value);
+                val.Text = track.Value.ToString();
+            };
+            track.DragEnded += (_, _) => Persist();
+            var sRow = new TableLayoutPanel
+            {
+                ColumnCount = 3,
+                RowCount = 1,
+                Height = 36,
+                BackColor = Color.Transparent
+            };
+            sRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+            sRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 48));
+            sRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 220));
+            track.Dock = DockStyle.Fill;
+            val.Dock = DockStyle.Fill;
+            delayLabel.Dock = DockStyle.Fill;
+            sRow.Controls.Add(track, 0, 0);
+            sRow.Controls.Add(val, 1, 0);
+            sRow.Controls.Add(delayLabel, 2, 0);
+            _refreshAllLabels += () => delayLabel.Text = _loc.T(labelKey);
+            return sRow;
+        }
+
+        settings.Controls.Add(DelayRow("delay", () => fm.ClickDelayMs, v => fm.ClickDelayMs = v, 1, 200));
+        settings.Controls.Add(DelayRow("mountSwapDelay", () => fm.MountSwapDelayMs, v => fm.MountSwapDelayMs = v, 10, 5000));
         var settingsSec = UiFactory.Section(_loc.T("section.settings"), settings, out var settingsTitle);
         UiFactory.Add(stack, settingsSec);
-        _refreshAllLabels += () =>
-        {
-            settingsTitle.Text = _loc.T("section.settings");
-            delayLabel.Text = _loc.T("delay");
-        };
+        _refreshAllLabels += () => settingsTitle.Text = _loc.T("section.settings");
 
         var jump = UiFactory.VStack();
         var main = UiFactory.Btn("", BtnKind.Accent);

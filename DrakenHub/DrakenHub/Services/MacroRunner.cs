@@ -140,15 +140,17 @@ internal sealed class MacroRunner
             var invKey = inv.InventoryHotkey ?? s.GearSwap.InventoryHotkey;
             var delay = Math.Max(10, fm.ClickDelayMs);
 
+            var swapDelay = fm.MountSwapDelayMs > 0 ? Math.Clamp(fm.MountSwapDelayMs, 10, 5000) : 80;
+
             // 1) Open inventory, switch to cape tab, equip mount cape
             Press(invKey);
             await Delay(delay * 2, token);
             await SwitchCapeTab(fm, inv, delay, token);
             await ClickCape(fm, inv, delay, token);
 
-            // 2) Summon mount (inventory stays open — cape slot now holds the original)
+            // 2) Summon mount, then wait before swapping cape back
             Press(fm.MountHotkey);
-            await Delay(Math.Max(delay * 2, 60), token);
+            await Delay(swapDelay, token);
 
             // 3) Equip original cape back, then close inventory
             await ClickCape(fm, inv, delay, token);

@@ -135,6 +135,8 @@ public sealed class FastMountSettings
     public string? MountHotkey { get; set; }
     public string? FastMountHotkey { get; set; }
     public int ClickDelayMs { get; set; } = 30;
+    /// <summary>Delay after mount key before the second cape click.</summary>
+    public int MountSwapDelayMs { get; set; } = 80;
     public string? MainPanelHotkey { get; set; } = "F1";
     public string? JumpTargetPanelHotkey { get; set; }
     public string? JumpSkillHotkey { get; set; }

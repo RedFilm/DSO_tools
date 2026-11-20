@@ -63,6 +63,7 @@ internal sealed class Localization
         ["mount"] = ("Маунт", "Mount"),
         ["fastmount"] = ("Fast Mount", "Fast Mount"),
         ["delay"] = ("Задержка кликов (мс)", "Click delay (ms)"),
+        ["mountSwapDelay"] = ("Задержка после маунта (мс)", "Delay after mount (ms)"),
         ["mainPanel"] = ("Основная панель", "Main panel"),
         ["targetPanel"] = ("Целевая панель", "Target panel"),
         ["skillSlot"] = ("Слот навыка", "Skill slot"),
