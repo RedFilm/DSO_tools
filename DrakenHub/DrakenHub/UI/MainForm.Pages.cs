@@ -455,31 +455,54 @@ internal sealed partial class MainForm
 
         TableLayoutPanel DelayRow(string labelKey, Func<int> get, Action<int> set, int min, int max)
         {
+            var delayLabel = new Label
+            {
+                Text = _loc.T(labelKey),
+                ForeColor = Theme.TextMuted,
+                Font = Theme.UiFont,
+                AutoSize = false,
+                Dock = DockStyle.Fill,
+                TextAlign = ContentAlignment.MiddleLeft,
+                Margin = new Padding(2, 0, 8, 0),
+                BackColor = Color.Transparent
+            };
             var track = UiFactory.Slider(min, max, Math.Clamp(get(), min, max));
-            var val = UiFactory.Lbl(track.Value.ToString());
-            var delayLabel = UiFactory.Lbl(_loc.T(labelKey), true);
+            track.Margin = new Padding(2, 4, 2, 4);
+            var val = new Label
+            {
+                Text = track.Value.ToString(),
+                ForeColor = Theme.Text,
+                Font = Theme.UiFont,
+                AutoSize = false,
+                Dock = DockStyle.Fill,
+                TextAlign = ContentAlignment.MiddleRight,
+                Margin = new Padding(4, 0, 2, 0),
+                BackColor = Color.Transparent
+            };
             track.ValueChanged += (_, _) =>
             {
                 set(track.Value);
                 val.Text = track.Value.ToString();
             };
             track.DragEnded += (_, _) => Persist();
+
             var sRow = new TableLayoutPanel
             {
                 ColumnCount = 3,
                 RowCount = 1,
-                Height = 36,
-                BackColor = Color.Transparent
+                Height = UiFactory.RowH + 4,
+                Margin = new Padding(0, 0, 0, 4),
+                BackColor = Color.Transparent,
+                Padding = Padding.Empty
             };
+            sRow.RowStyles.Add(new RowStyle(SizeType.Absolute, UiFactory.RowH + 4));
+            // Label | slider | value — avoids crushing long RU captions into the number column.
+            sRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 210));
             sRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-            sRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 48));
-            sRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 220));
-            track.Dock = DockStyle.Fill;
-            val.Dock = DockStyle.Fill;
-            delayLabel.Dock = DockStyle.Fill;
-            sRow.Controls.Add(track, 0, 0);
-            sRow.Controls.Add(val, 1, 0);
-            sRow.Controls.Add(delayLabel, 2, 0);
+            sRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 56));
+            sRow.Controls.Add(delayLabel, 0, 0);
+            sRow.Controls.Add(track, 1, 0);
+            sRow.Controls.Add(val, 2, 0);
             _refreshAllLabels += () => delayLabel.Text = _loc.T(labelKey);
             return sRow;
         }
