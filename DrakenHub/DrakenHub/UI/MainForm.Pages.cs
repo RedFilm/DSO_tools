@@ -543,12 +543,19 @@ internal sealed partial class MainForm
         UiFactory.Add(stack, mainSec);
         _refreshAllLabels += () => mainTitle.Text = _loc.T("mainPanel");
 
-        var listHost = UiFactory.VStack();
+        var listHost = new Panel
+        {
+            BackColor = Color.Transparent,
+            Margin = Padding.Empty,
+            Padding = Padding.Empty
+        };
+
         void Rebuild()
         {
             listHost.Controls.Clear();
             foreach (var profile in es.Profiles.ToList())
-                listHost.Controls.Add(BuildExtraSkillBlock(profile));
+                listHost.Controls.Add(BuildExtraSkillBlock(profile, scroll));
+            UiFactory.Relayout(scroll);
         }
 
         var add = UiFactory.Btn(_loc.T("add.extraskill"), BtnKind.Neutral);
@@ -582,10 +589,8 @@ internal sealed partial class MainForm
         return scroll;
     }
 
-    private Control BuildExtraSkillBlock(ExtraSkillProfile profile)
+    private Control BuildExtraSkillBlock(ExtraSkillProfile profile, Control layoutHost)
     {
-        var wrap = UiFactory.VStack();
-        var body = UiFactory.VStack();
         var nameLabel = UiFactory.Lbl(_loc.T("skillName"));
         var name = UiFactory.Tb(profile.Name);
         name.TextChanged += (_, _) => profile.Name = name.Text;
@@ -594,22 +599,57 @@ internal sealed partial class MainForm
         BindUtilityKeyButton(target, () => profile.TargetPanelHotkey, v => profile.TargetPanelHotkey = v, "targetPanel");
         var skill = UiFactory.Btn("", BtnKind.Accent);
         BindUtilityKeyButton(skill, () => profile.SkillSlotHotkey, v => profile.SkillSlotHotkey = v, "skillSlot");
-        body.Controls.Add(UiFactory.FieldRow(nameLabel, name, 140));
-        body.Controls.Add(UiFactory.EqualRow(target, skill));
+
+        var nameRow = UiFactory.FieldRow(nameLabel, name, 140);
+        var keysRow = UiFactory.EqualRow(target, skill);
+
+        var body = new Panel
+        {
+            BackColor = Color.Transparent,
+            Margin = Padding.Empty,
+            Padding = Padding.Empty,
+            Height = nameRow.Height + keysRow.Height + 8
+        };
+        nameRow.Margin = new Padding(0, 0, 0, 4);
+        keysRow.Margin = new Padding(0);
+        body.Controls.Add(nameRow);
+        body.Controls.Add(keysRow);
 
         var headerBtn = UiFactory.Btn("▾ " + profile.Name, BtnKind.Neutral, 30);
         headerBtn.TextAlign = ContentAlignment.MiddleLeft;
+        var hotkey = UiFactory.Btn("", BtnKind.Primary, 30);
+        BindLaunchButton(hotkey, () => profile.Hotkey, v => profile.Hotkey = v, "es:" + profile.Id, "hotkey");
+        var header = UiFactory.EqualRow(headerBtn, hotkey);
+
+        var wrap = new Panel
+        {
+            BackColor = Color.Transparent,
+            Margin = new Padding(0, 0, 0, 8),
+            Padding = Padding.Empty,
+            Height = header.Height + body.Height + 8
+        };
+        wrap.Controls.Add(header);
+        wrap.Controls.Add(body);
+
+        void RelayoutBlock()
+        {
+            body.Height = body.Visible ? nameRow.Height + keysRow.Height + 8 : 0;
+            wrap.Height = header.Height + (body.Visible ? body.Height + 4 : 0) + 4;
+            UiFactory.Relayout(layoutHost);
+        }
+
         headerBtn.Click += (_, _) =>
         {
             body.Visible = !body.Visible;
             headerBtn.Text = (body.Visible ? "▾ " : "▸ ") + profile.Name;
+            RelayoutBlock();
         };
-        name.TextChanged += (_, _) => headerBtn.Text = (body.Visible ? "▾ " : "▸ ") + profile.Name;
+        name.TextChanged += (_, _) =>
+        {
+            profile.Name = name.Text;
+            headerBtn.Text = (body.Visible ? "▾ " : "▸ ") + profile.Name;
+        };
 
-        var hotkey = UiFactory.Btn("", BtnKind.Primary, 30);
-        BindLaunchButton(hotkey, () => profile.Hotkey, v => profile.Hotkey = v, "es:" + profile.Id, "hotkey");
-        wrap.Controls.Add(UiFactory.EqualRow(headerBtn, hotkey));
-        wrap.Controls.Add(body);
         return wrap;
     }
 

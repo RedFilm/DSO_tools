@@ -114,22 +114,60 @@ internal static class UiFactory
 
         if (child is FlowLayoutPanel { FlowDirection: FlowDirection.TopDown } flp)
         {
+            flp.SuspendLayout();
             foreach (Control c in flp.Controls)
             {
-                c.Width = width;
+                // Layout nested content first so Height is known before the parent flows children.
                 if (c is Panel p && p.Tag is SectionTag)
                     LayoutSectionInner(p, width);
-                else if (c is FlowLayoutPanel nested)
+                else if (c is FlowLayoutPanel { FlowDirection: FlowDirection.TopDown } nested)
                     LayoutStackChild(nested, width);
-                else if (c is Panel row)
-                    row.Width = width;
+                else if (c is Panel row && c is not FlowLayoutPanel && c is not TableLayoutPanel)
+                {
+                    LayoutPlainPanel(row, width);
+                }
+
+                c.Width = width;
             }
             flp.Height = MeasureHeight(flp);
+            flp.ResumeLayout(true); // reflow children with final heights — prevents overlap
+            return;
+        }
+
+        if (child is Panel plain && child is not TableLayoutPanel && plain.Tag is not SectionTag)
+        {
+            LayoutPlainPanel(plain, width);
             return;
         }
 
         if (child is TableLayoutPanel)
             return;
+    }
+
+    /// <summary>Top-down absolute stack inside a plain Panel (used by Extra Skill / profile cards).</summary>
+    private static void LayoutPlainPanel(Panel panel, int width)
+    {
+        panel.Width = width;
+        panel.SuspendLayout();
+        var y = panel.Padding.Top;
+        var innerW = Math.Max(1, width - panel.Padding.Horizontal);
+        foreach (Control c in panel.Controls)
+        {
+            if (!c.Visible) continue;
+            if (c is FlowLayoutPanel { FlowDirection: FlowDirection.TopDown } nested)
+                LayoutStackChild(nested, innerW);
+            else if (c is Panel p && p.Tag is SectionTag)
+                LayoutSectionInner(p, innerW);
+            else if (c is Panel row && c is not TableLayoutPanel && row.Tag is not SectionTag)
+                LayoutPlainPanel(row, innerW);
+
+            c.Left = panel.Padding.Left;
+            c.Width = innerW;
+            c.Top = y;
+            y += c.Height + Math.Max(c.Margin.Bottom, 4);
+        }
+        panel.Height = Math.Max(RowH, y + panel.Padding.Bottom);
+        panel.ResumeLayout(false);
     }
 
     private static void LayoutSectionInner(Panel panel, int width)
