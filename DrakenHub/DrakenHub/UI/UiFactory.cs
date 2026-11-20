@@ -134,7 +134,17 @@ internal static class UiFactory
             return;
         }
 
-        if (child is Panel plain && child is not TableLayoutPanel && plain.Tag is not SectionTag)
+        if (child is FlowLayoutPanel { FlowDirection: FlowDirection.LeftToRight } rowFlp)
+        {
+            // Keep natural checkbox/button widths so items flow horizontally (e.g. inventory tabs).
+            rowFlp.Width = width;
+            rowFlp.WrapContents = true;
+            rowFlp.PerformLayout();
+            rowFlp.Height = Math.Max(RowH + 4, rowFlp.PreferredSize.Height);
+            return;
+        }
+
+        if (child is Panel plain && child is not FlowLayoutPanel && child is not TableLayoutPanel && plain.Tag is not SectionTag)
         {
             LayoutPlainPanel(plain, width);
             return;

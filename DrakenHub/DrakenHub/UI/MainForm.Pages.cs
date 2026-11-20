@@ -277,14 +277,18 @@ internal sealed partial class MainForm
         {
             FlowDirection = FlowDirection.LeftToRight,
             WrapContents = true,
-            AutoSize = true,
-            BackColor = Color.Transparent
+            AutoSize = false,
+            BackColor = Color.Transparent,
+            Height = UiFactory.RowH + 8,
+            Padding = Padding.Empty,
+            Margin = Padding.Empty
         };
         var tabs = _settings.Current.Inventory.SelectedTabs;
         for (var i = 0; i < 9; i++)
         {
             var index = i;
             var cb = UiFactory.Check((i + 1).ToString(), tabs[i]);
+            cb.Margin = new Padding(2, 4, 10, 4);
             cb.CheckedChanged += (_, _) => { tabs[index] = cb.Checked; Persist(hotkeys: false); };
             inner.Controls.Add(cb);
         }
