@@ -113,11 +113,99 @@ internal sealed partial class MainForm
         UiFactory.Add(stack, shopSec);
         _refreshAllLabels += () => shopTitle.Text = _loc.T("section.shop");
 
+        UiFactory.Add(stack, BuildSellExtraSkillSection());
         UiFactory.Add(stack, BuildGridSettingsSection());
         UiFactory.Add(stack, BuildTabsSection());
         UiFactory.Add(stack, BuildRaritiesSection());
         UiFactory.Add(stack, BuildOtherItemsSection());
         return scroll;
+    }
+
+    private Control BuildSellExtraSkillSection()
+    {
+        var inv = _settings.Current.Inventory;
+        var inner = UiFactory.VStack();
+
+        ComboBox MakeCombo(Func<string?> get, Action<string?> set, string labelKey)
+        {
+            var label = UiFactory.Lbl(_loc.T(labelKey));
+            var combo = UiFactory.Combo();
+            combo.DropDownStyle = ComboBoxStyle.DropDownList;
+            combo.Width = 280;
+
+            void Fill()
+            {
+                var selected = get();
+                combo.Items.Clear();
+                combo.Items.Add(new ExtraSkillPick(_loc.T("none"), null));
+                foreach (var p in _settings.Current.ExtraSkill.Profiles)
+                    combo.Items.Add(new ExtraSkillPick(p.Name, p.Id));
+
+                var idx = 0;
+                for (var i = 0; i < combo.Items.Count; i++)
+                {
+                    if (combo.Items[i] is ExtraSkillPick pick &&
+                        string.Equals(pick.Id, selected, StringComparison.OrdinalIgnoreCase))
+                    {
+                        idx = i;
+                        break;
+                    }
+                }
+                combo.SelectedIndex = idx;
+            }
+
+            Fill();
+            combo.DropDown += (_, _) =>
+            {
+                var cur = combo.SelectedItem is ExtraSkillPick p ? p.Id : get();
+                // Refresh names/list when profiles change on Extra Skill page.
+                var selected = cur;
+                combo.Items.Clear();
+                combo.Items.Add(new ExtraSkillPick(_loc.T("none"), null));
+                foreach (var profile in _settings.Current.ExtraSkill.Profiles)
+                    combo.Items.Add(new ExtraSkillPick(profile.Name, profile.Id));
+                var idx = 0;
+                for (var i = 0; i < combo.Items.Count; i++)
+                {
+                    if (combo.Items[i] is ExtraSkillPick pick &&
+                        string.Equals(pick.Id, selected, StringComparison.OrdinalIgnoreCase))
+                    {
+                        idx = i;
+                        break;
+                    }
+                }
+                combo.SelectedIndex = idx;
+            };
+            combo.SelectedIndexChanged += (_, _) =>
+            {
+                if (combo.SelectedItem is not ExtraSkillPick pick) return;
+                set(pick.Id);
+                Persist();
+            };
+
+            inner.Controls.Add(UiFactory.FieldRow(label, combo, 160));
+            _refreshAllLabels += () =>
+            {
+                label.Text = _loc.T(labelKey);
+                if (combo.Items.Count > 0 && combo.Items[0] is ExtraSkillPick none)
+                    none.Name = _loc.T("none");
+            };
+            return combo;
+        }
+
+        MakeCombo(() => inv.SellExtraSkillBeforeId, v => inv.SellExtraSkillBeforeId = v, "sell.extraBefore");
+        MakeCombo(() => inv.SellExtraSkillAfterId, v => inv.SellExtraSkillAfterId = v, "sell.extraAfter");
+
+        var section = UiFactory.Section(_loc.T("section.sellExtra"), inner, out var title);
+        _refreshAllLabels += () => title.Text = _loc.T("section.sellExtra");
+        return section;
+    }
+
+    private sealed class ExtraSkillPick(string name, string? id)
+    {
+        public string Name { get; set; } = name;
+        public string? Id { get; } = id;
+        public override string ToString() => Name;
     }
 
     private Control BuildGridSettingsSection()

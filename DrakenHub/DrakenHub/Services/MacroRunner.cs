@@ -82,13 +82,16 @@ internal sealed class MacroRunner
         Run(async token =>
         {
             var inv = _settings.Current.Inventory;
+            await RunSellExtraSkillAsync(inv.SellExtraSkillBeforeId, token);
             OpenShop(inv);
             await Delay(Math.Max(40, inv.Grid.SellClickDelayMs * 2), token);
             await SellSelectedTabs(inv, includeOther: true, token);
             if (inv.CloseInventory != null)
             {
                 _input.LeftClick(inv.CloseInventory.X, inv.CloseInventory.Y);
+                await Delay(Math.Max(40, inv.Grid.SellClickDelayMs), token);
             }
+            await RunSellExtraSkillAsync(inv.SellExtraSkillAfterId, token);
         });
     }
 
@@ -97,7 +100,9 @@ internal sealed class MacroRunner
         Run(async token =>
         {
             var inv = _settings.Current.Inventory;
+            await RunSellExtraSkillAsync(inv.SellExtraSkillBeforeId, token);
             await ScanAndSellTab(inv, includeOther: true, token);
+            await RunSellExtraSkillAsync(inv.SellExtraSkillAfterId, token);
         });
     }
 
@@ -186,16 +191,29 @@ internal sealed class MacroRunner
 
     public void ExtraSkill(ExtraSkillProfile profile)
     {
-        Run(async token =>
-        {
-            var delay = 25;
-            var main = _settings.Current.ExtraSkill.MainPanelHotkey;
-            Press(profile.TargetPanelHotkey);
-            await Delay(delay, token);
-            Press(profile.SkillSlotHotkey);
-            await Delay(delay, token);
-            Press(main);
-        });
+        Run(async token => await RunExtraSkillAsync(profile, token));
+    }
+
+    private async Task RunSellExtraSkillAsync(string? profileId, CancellationToken token)
+    {
+        if (string.IsNullOrWhiteSpace(profileId)) return;
+        var profile = _settings.Current.ExtraSkill.Profiles
+            .FirstOrDefault(p => p.Id.Equals(profileId, StringComparison.OrdinalIgnoreCase));
+        if (profile == null) return;
+        await RunExtraSkillAsync(profile, token);
+        await Delay(40, token);
+    }
+
+    private async Task RunExtraSkillAsync(ExtraSkillProfile profile, CancellationToken token)
+    {
+        var delay = 25;
+        var main = _settings.Current.ExtraSkill.MainPanelHotkey;
+        Press(profile.TargetPanelHotkey);
+        await Delay(delay, token);
+        Press(profile.SkillSlotHotkey);
+        await Delay(delay, token);
+        Press(main);
+        await Delay(delay, token);
     }
 
     public void GearSwap(GearSwapProfile profile)

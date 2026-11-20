@@ -51,6 +51,12 @@ public sealed class InventorySettings
     public ScreenPoint? SmelterItem { get; set; }
     public ScreenPoint? SmeltButton { get; set; }
     public string? SmeltHotkey { get; set; }
+
+    /// <summary>Extra Skill profile Id to run before sell (null/empty = none).</summary>
+    public string? SellExtraSkillBeforeId { get; set; }
+
+    /// <summary>Extra Skill profile Id to run after sell (null/empty = none).</summary>
+    public string? SellExtraSkillAfterId { get; set; }
 }
 
 public sealed class GridSettings
