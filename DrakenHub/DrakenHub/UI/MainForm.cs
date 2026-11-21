@@ -13,6 +13,7 @@ internal sealed partial class MainForm : Form
     private readonly MacroRunner _macros;
     private readonly AutoClickerController _autoClicker;
     private readonly AutoCastController _autoCast;
+    private readonly SpeedBoostService _speedBoost;
 
     private readonly SplitContainer _shell = new();
     private readonly Panel _navRail = new();
@@ -34,7 +35,9 @@ internal sealed partial class MainForm : Form
     private Action? _refreshExtraSkill;
     private Action? _refreshTeleport;
     private Action? _refreshAutoCast;
+    private Action? _refreshSpeedBoost;
     private Action? _refreshAllLabels;
+    private string _speedBoostStatusKey = "disabled";
 
     private static readonly (string Id, string Key)[] NavItems =
     [
@@ -45,6 +48,7 @@ internal sealed partial class MainForm : Form
         ("gearswap", "tab.gearswap"),
         ("autocast", "tab.autocast"),
         ("teleport", "tab.teleport"),
+        ("speedboost", "tab.speedboost"),
         ("settings", "tab.settings")
     ];
 
@@ -53,6 +57,18 @@ internal sealed partial class MainForm : Form
         _macros = new MacroRunner(_settings, _input);
         _autoClicker = new AutoClickerController(_settings, _input);
         _autoCast = new AutoCastController(_settings, _input);
+        _speedBoost = new SpeedBoostService(_settings);
+        _speedBoost.StatusChanged += key =>
+        {
+            _speedBoostStatusKey = key;
+            if (IsHandleCreated)
+                BeginInvoke(() => _refreshSpeedBoost?.Invoke());
+        };
+        _speedBoost.StateChanged += () =>
+        {
+            if (IsHandleCreated)
+                BeginInvoke(() => _refreshSpeedBoost?.Invoke());
+        };
 
         _settings.Load();
         _loc.Language = _settings.Current.Language;
@@ -107,6 +123,7 @@ internal sealed partial class MainForm : Form
             _hotkeys.Dispose();
             _autoClicker.Dispose();
             _autoCast.Dispose();
+            _speedBoost.Dispose();
             _persistTimer.Dispose();
             _gridOverlay?.Close();
         };
@@ -324,6 +341,7 @@ internal sealed partial class MainForm : Form
         Put("gearswap", BuildGearSwapPage());
         Put("autocast", BuildAutoCastPage());
         Put("teleport", BuildTeleportPage());
+        Put("speedboost", BuildSpeedBoostPage());
         Put("settings", BuildSettingsPage());
     }
 
@@ -428,6 +446,7 @@ internal sealed partial class MainForm : Form
         if (Same(s.WindowHotkeys.EmergencyStop, "win.stop")) return true;
         if (Same(s.AutoClicker.LeftHotkey, "aclick.left")) return true;
         if (Same(s.AutoClicker.RightHotkey, "aclick.right")) return true;
+        if (Same(s.SpeedBoost.ToggleHotkey, "speedboost.toggle")) return true;
         return false;
     }
 
@@ -638,8 +657,10 @@ internal sealed partial class MainForm : Form
             _macros.EmergencyStop();
             _autoClicker.StopAll();
             _autoCast.StopAll();
+            _speedBoost.Disable();
             Persist(immediate: true);
             _refreshAutoCast?.Invoke();
+            _refreshSpeedBoost?.Invoke();
         });
 
         Reg("sell.all", s.Inventory.SellAllHotkey, () => _macros.SellAll());
@@ -672,6 +693,16 @@ internal sealed partial class MainForm : Form
                 _refreshAutoCast?.Invoke();
             });
         }
+
+        Reg("speedboost.toggle", s.SpeedBoost.ToggleHotkey, () =>
+        {
+            BeginInvoke(() =>
+            {
+                SpeedBoostLog.Host("Hotkey speedboost.toggle", includeStack: true);
+                _speedBoost.Toggle();
+                _refreshSpeedBoost?.Invoke();
+            });
+        });
     }
 
     private void RelocalizeNav()
@@ -690,6 +721,7 @@ internal sealed partial class MainForm : Form
         _refreshExtraSkill = null;
         _refreshTeleport = null;
         _refreshAutoCast = null;
+        _refreshSpeedBoost = null;
         BuildPages();
         RelocalizeNav();
         ShowPage(current);

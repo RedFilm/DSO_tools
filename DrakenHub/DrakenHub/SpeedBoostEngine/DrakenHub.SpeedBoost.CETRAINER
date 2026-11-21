@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="utf-8"?>
+<CheatTable CheatEngineTableVersion="46">
+  <CheatEntries>
+    <CheatEntry>
+      <ID>1</ID>
+      <Description>"cast"</Description>
+      <ShowAsSigned>0</ShowAsSigned>
+      <VariableType>Float</VariableType>
+      <Address>"THREADSTACK0"-00000310</Address>
+      <!-- Same pointer path as live memrec (ends at F8, not FC). -->
+      <Offsets>
+        <Offset>F8</Offset>
+        <Offset>0</Offset>
+        <Offset>30</Offset>
+        <Offset>670</Offset>
+        <Offset>10</Offset>
+        <Offset>288</Offset>
+        <Offset>0</Offset>
+      </Offsets>
+    </CheatEntry>
+    <CheatEntry>
+      <ID>2</ID>
+      <Description>"speed"</Description>
+      <ShowAsSigned>0</ShowAsSigned>
+      <VariableType>Float</VariableType>
+      <Address>"THREADSTACK0"-00000310</Address>
+      <Offsets>
+        <Offset>F8</Offset>
+        <Offset>0</Offset>
+        <Offset>30</Offset>
+        <Offset>670</Offset>
+        <Offset>10</Offset>
+        <Offset>288</Offset>
+        <Offset>0</Offset>
+      </Offsets>
+    </CheatEntry>
+  </CheatEntries>
+  <UserdefinedSymbols/>
+  <LuaScript>
+-- DrakenHub launches SpeedBoost with WorkingDirectory = SpeedBoostEngine
+local function trainerLog(msg)
+  local base = os.getenv("LOCALAPPDATA") or "."
+  local dir = base .. "\\DrakenHub\\SpeedBoostIpc"
+  pcall(function()
+    if createDirectory then createDirectory(dir) end
+  end)
+  local f = io.open(dir .. "\\bridge.log", "a")
+  if f then
+    f:write(os.date("%H:%M:%S") .. " [CETRAINER] " .. tostring(msg) .. "\n")
+    f:close()
+  end
+end
+trainerLog("LuaScript start")
+local function loadBridge()
+  local candidates = {
+    "bridge.lua",
+    ".\\bridge.lua"
+  }
+  pcall(function()
+    if getCheatEngineDir then
+      table.insert(candidates, 1, getCheatEngineDir() .. "bridge.lua")
+    end
+  end)
+  for _, path in ipairs(candidates) do
+    local f = io.open(path, "r")
+    if f then
+      f:close()
+      trainerLog("dofile " .. path)
+      local ok, err = pcall(dofile, path)
+      if not ok then
+        trainerLog("bridge error: " .. tostring(err))
+        showMessage("DrakenHub SpeedBoost bridge error:\n" .. tostring(err))
+      else
+        trainerLog("dofile ok")
+      end
+      return
+    end
+  end
+  trainerLog("bridge.lua not found")
+  showMessage("DrakenHub SpeedBoost: bridge.lua not found next to SpeedBoost.exe")
+end
+loadBridge()
+  </LuaScript>
+</CheatTable>

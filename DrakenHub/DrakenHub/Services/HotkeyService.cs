@@ -38,7 +38,10 @@ internal sealed class HotkeyService : IDisposable
         if (_host == null || !_host.IsHandleCreated) return false;
 
         var id = _nextId++;
-        if (!WinApi.RegisterHotKey(_host.Handle, id, 0, (uint)key))
+        // MOD_NOREPEAT (0x4000): Windows otherwise spams WM_HOTKEY while the key is held,
+        // which was toggling SpeedBoost every few seconds and flashing the CE window.
+        const uint modNoRepeat = 0x4000;
+        if (!WinApi.RegisterHotKey(_host.Handle, id, modNoRepeat, (uint)key))
             return false;
 
         _idsByName[name] = id;

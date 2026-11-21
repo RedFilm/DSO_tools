@@ -132,4 +132,70 @@ internal static class WinApi
 
     [DllImport("user32.dll")]
     public static extern int GetSystemMetrics(int nIndex);
+
+    public const uint ProcessVmRead = 0x0010;
+    public const uint ProcessVmWrite = 0x0020;
+    public const uint ProcessVmOperation = 0x0008;
+    public const uint ProcessQueryInformation = 0x0400;
+    public const uint ProcessQueryLimitedInformation = 0x1000;
+    public const uint ThreadQueryInformation = 0x0040;
+    public const uint ThreadQueryLimitedInformation = 0x0800;
+    public const uint Th32csSnapThread = 0x00000004;
+    public const int ThreadInfoClassBasic = 0;
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct ThreadEntry32
+    {
+        public uint DwSize;
+        public uint CntUsage;
+        public uint Th32ThreadId;
+        public uint Th32OwnerProcessId;
+        public int TpBasePri;
+        public int TpDeltaPri;
+        public uint DwFlags;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct ThreadBasicInfo
+    {
+        public int ExitStatus;
+        public IntPtr TebBaseAddress;
+        public IntPtr ClientIdUniqueProcess;
+        public IntPtr ClientIdUniqueThread;
+        public IntPtr AffinityMask;
+        public int Priority;
+        public int BasePriority;
+    }
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    public static extern IntPtr OpenProcess(uint dwDesiredAccess, bool bInheritHandle, int dwProcessId);
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    public static extern IntPtr OpenThread(uint dwDesiredAccess, bool bInheritHandle, uint dwThreadId);
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    public static extern bool CloseHandle(IntPtr hObject);
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    public static extern bool ReadProcessMemory(IntPtr hProcess, IntPtr lpBaseAddress, byte[] lpBuffer, int nSize, out IntPtr lpNumberOfBytesRead);
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    public static extern bool WriteProcessMemory(IntPtr hProcess, IntPtr lpBaseAddress, byte[] lpBuffer, int nSize, out IntPtr lpNumberOfBytesWritten);
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    public static extern IntPtr CreateToolhelp32Snapshot(uint dwFlags, uint th32ProcessId);
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    public static extern bool Thread32First(IntPtr hSnapshot, ref ThreadEntry32 lpte);
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    public static extern bool Thread32Next(IntPtr hSnapshot, ref ThreadEntry32 lpte);
+
+    [DllImport("ntdll.dll")]
+    public static extern int NtQueryInformationThread(
+        IntPtr threadHandle,
+        int threadInformationClass,
+        ref ThreadBasicInfo threadInformation,
+        int threadInformationLength,
+        out int returnLength);
 }

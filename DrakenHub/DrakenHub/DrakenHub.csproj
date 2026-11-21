@@ -12,4 +12,8 @@
     <AssemblyName>DrakenHub</AssemblyName>
   </PropertyGroup>
 
+  <ItemGroup>
+    <None Include="SpeedBoostEngine\**\*" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>

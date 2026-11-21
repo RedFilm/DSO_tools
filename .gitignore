@@ -18,6 +18,21 @@
 artifacts/
 publish/
 *.binlog
+_build_check/
+_build*/
+**/_build_check/
+
+# Local diagnostics / scratch (never commit)
+_SbDiag/
+_captures/
+_orig_trainer/
+_diag_*/
+**/_diag_*.ps1
+**/_probe_*.lua
+**/probe.CETRAINER
+**/freeze_test.CETRAINER
+**/memrec_test.CETRAINER
+**/cracked_test.CETRAINER
 
 # .NET / NuGet
 project.lock.json

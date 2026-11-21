@@ -1153,6 +1153,151 @@ internal sealed partial class MainForm
         return wrap;
     }
 
+    private Panel BuildSpeedBoostPage()
+    {
+        var scroll = UiFactory.ScrollPage(out var stack);
+        var sb = _settings.Current.SpeedBoost;
+        var profileIds = SpeedBoostService.Profiles.Select(p => p.Id).ToArray();
+
+        var toggle = UiFactory.Btn(_loc.T(_speedBoost.IsEnabled ? "sb.disable" : "sb.connect"), BtnKind.Primary, 40);
+        var status = UiFactory.Lbl($"{_loc.T("sb.status")}: {_loc.T("sb.status.disabled")}", true);
+        var profileLabel = UiFactory.Lbl(_loc.T("sb.profile"));
+        var profileCombo = UiFactory.Combo(profileIds.Select(id => _loc.T("sb.profile." + id)).ToArray());
+        var profileIndex = Array.IndexOf(profileIds, sb.ProfileId);
+        profileCombo.SelectedIndex = profileIndex >= 0 ? profileIndex : 0;
+        var boostLabel = UiFactory.Lbl(_loc.T("sb.boost"));
+        var boostValue = UiFactory.Lbl(sb.BoostDisplay.ToString());
+        var boostSlider = UiFactory.Slider(
+            SpeedBoostService.BoostDisplayMin,
+            SpeedBoostService.BoostDisplayMax,
+            Math.Clamp(sb.BoostDisplay, SpeedBoostService.BoostDisplayMin, SpeedBoostService.BoostDisplayMax));
+        var hotkey = UiFactory.Btn("", BtnKind.Primary);
+        var hint = UiFactory.Lbl(_loc.T("sb.hint"), true);
+
+        void SyncSliderEnabled()
+        {
+            var profile = SpeedBoostService.ResolveProfile(sb.ProfileId);
+            boostSlider.Enabled = profile.SliderEnabled;
+            boostLabel.Enabled = profile.SliderEnabled;
+            boostValue.Enabled = profile.SliderEnabled;
+            boostValue.Text = profile.SliderEnabled ? sb.BoostDisplay.ToString() : "—";
+        }
+
+        void RefreshSpeedBoostUi()
+        {
+            var launching = _speedBoost.IsLaunching;
+            var on = _speedBoost.IsEnabled || launching;
+            toggle.Text = _loc.T(on ? "sb.disable" : "sb.connect");
+            UiFactory.ApplyKind(toggle, on ? BtnKind.Danger : BtnKind.Primary);
+            if (!_speedBoost.IsEnabled && !launching && _speedBoostStatusKey is "connected" or "not_connected" or "starting")
+                _speedBoostStatusKey = "disabled";
+            if (launching && _speedBoostStatusKey is "disabled" or "")
+                _speedBoostStatusKey = "starting";
+            var statusKey = _speedBoostStatusKey switch
+            {
+                "connected" => "connected",
+                "no_process" => "no_process",
+                "access_denied" => "access_denied",
+                "pointer_failed" => "pointer_failed",
+                "not_connected" => "not_connected",
+                "starting" => "starting",
+                "engine_missing" => "engine_missing",
+                "engine_assets_missing" => "engine_assets_missing",
+                "engine_start_failed" => "engine_start_failed",
+                "engine_exited" => "engine_exited",
+                _ => "disabled"
+            };
+            var localized = _loc.T("sb.status." + statusKey);
+            if (localized == "sb.status." + statusKey)
+                localized = statusKey;
+            status.Text = $"{_loc.T("sb.status")}: {localized}";
+            SyncSliderEnabled();
+        }
+
+        toggle.Click += (_, _) =>
+        {
+            SpeedBoostLog.Host("UI toggle.Click", includeStack: true);
+            _speedBoost.Toggle();
+            _speedBoostStatusKey = _speedBoost.LastDetail;
+            Persist(immediate: true, hotkeys: false);
+            RefreshSpeedBoostUi();
+        };
+
+        var control = UiFactory.VStack();
+        control.Controls.Add(toggle);
+        control.Controls.Add(status);
+        var controlSec = UiFactory.Section(_loc.T("section.control"), control, out var controlTitle);
+        UiFactory.Add(stack, controlSec);
+
+        profileCombo.SelectedIndexChanged += (_, _) =>
+        {
+            if (profileCombo.SelectedIndex < 0 || profileCombo.SelectedIndex >= profileIds.Length) return;
+            var previousId = sb.ProfileId;
+            sb.ProfileId = profileIds[profileCombo.SelectedIndex];
+            SyncSliderEnabled();
+            if (_speedBoost.IsEnabled)
+                _speedBoost.SwitchActiveProfile(previousId);
+            Persist(hotkeys: false);
+            RefreshSpeedBoostUi();
+        };
+
+        boostSlider.ValueChanged += (_, _) =>
+        {
+            sb.BoostDisplay = boostSlider.Value;
+            boostValue.Text = boostSlider.Value.ToString();
+            if (_speedBoost.IsEnabled)
+                _speedBoost.ReapplyIfEnabled();
+        };
+        boostSlider.DragEnded += (_, _) => Persist(hotkeys: false);
+
+        var boostRow = new TableLayoutPanel
+        {
+            ColumnCount = 3,
+            RowCount = 1,
+            Height = 36,
+            BackColor = Color.Transparent
+        };
+        boostRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 160));
+        boostRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        boostRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 48));
+        boostLabel.Dock = DockStyle.Fill;
+        boostSlider.Dock = DockStyle.Fill;
+        boostValue.Dock = DockStyle.Fill;
+        boostRow.Controls.Add(boostLabel, 0, 0);
+        boostRow.Controls.Add(boostSlider, 1, 0);
+        boostRow.Controls.Add(boostValue, 2, 0);
+
+        BindLaunchButton(hotkey, () => sb.ToggleHotkey, v => sb.ToggleHotkey = v, "speedboost.toggle", "sb.hotkey");
+
+        var settings = UiFactory.VStack();
+        settings.Controls.Add(UiFactory.FieldRow(profileLabel, profileCombo, 160));
+        settings.Controls.Add(boostRow);
+        settings.Controls.Add(hotkey);
+        var settingsSec = UiFactory.Section(_loc.T("section.settings"), settings, out var settingsTitle);
+        UiFactory.Add(stack, settingsSec);
+        UiFactory.Add(stack, hint);
+
+        _refreshSpeedBoost = RefreshSpeedBoostUi;
+        _refreshAllLabels += () =>
+        {
+            controlTitle.Text = _loc.T("section.control");
+            settingsTitle.Text = _loc.T("section.settings");
+            profileLabel.Text = _loc.T("sb.profile");
+            boostLabel.Text = _loc.T("sb.boost");
+            hint.Text = _loc.T("sb.hint");
+            var sel = profileCombo.SelectedIndex;
+            profileCombo.Items.Clear();
+            foreach (var id in profileIds)
+                profileCombo.Items.Add(_loc.T("sb.profile." + id));
+            profileCombo.SelectedIndex = sel >= 0 && sel < profileIds.Length ? sel : 0;
+            RefreshSpeedBoostUi();
+        };
+
+        SyncSliderEnabled();
+        RefreshSpeedBoostUi();
+        return scroll;
+    }
+
     private Panel BuildSettingsPage()
     {
         var scroll = UiFactory.ScrollPage(out var stack);

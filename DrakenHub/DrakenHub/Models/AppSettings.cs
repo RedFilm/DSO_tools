@@ -22,6 +22,7 @@ public sealed class AppSettings
     public ExtraSkillSettings ExtraSkill { get; set; } = new();
     public AutoCastSettings AutoCast { get; set; } = new();
     public FastTeleportSettings FastTeleport { get; set; } = new();
+    public SpeedBoostSettings SpeedBoost { get; set; } = new();
 }
 
 public sealed class WindowHotkeys
@@ -227,4 +228,12 @@ public sealed class TeleportLocation
     public ScreenPoint? Region { get; set; }
     public ScreenPoint? Location { get; set; }
     public ScreenPoint? Difficulty { get; set; }
+}
+
+public sealed class SpeedBoostSettings
+{
+    public string ProfileId { get; set; } = "global";
+    /// <summary>UI slider position (30…470) mapped to game float 6.0…50.0.</summary>
+    public int BoostDisplay { get; set; } = 30;
+    public string? ToggleHotkey { get; set; }
 }
