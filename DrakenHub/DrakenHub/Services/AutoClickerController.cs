@@ -41,6 +41,12 @@ internal sealed class AutoClickerController : IDisposable
         UpdateTimers();
     }
 
+    public bool IsLeftActive => ShouldClickLeft();
+    public bool IsRightActive => ShouldClickRight();
+    public bool IsAnyActive => IsLeftActive || IsRightActive;
+
+    public event Action? ActivityChanged;
+
     public void StopAll()
     {
         _leftToggleOn = false;
@@ -49,6 +55,7 @@ internal sealed class AutoClickerController : IDisposable
         _rightHeld = false;
         _leftTimer.Stop();
         _rightTimer.Stop();
+        ActivityChanged?.Invoke();
     }
 
     private void OnRawKey(Keys key, bool down)
@@ -111,6 +118,8 @@ internal sealed class AutoClickerController : IDisposable
 
         if (ShouldClickRight()) { if (!_rightTimer.Enabled) _rightTimer.Start(); }
         else _rightTimer.Stop();
+
+        ActivityChanged?.Invoke();
     }
 
     public void Dispose()

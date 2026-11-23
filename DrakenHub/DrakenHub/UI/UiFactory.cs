@@ -13,8 +13,8 @@ internal enum BtnKind
 
 internal static class UiFactory
 {
-    public const int RowH = 34;
-    public const int Gap = 8;
+    public const int RowH = 36;
+    public const int Gap = 10;
 
     /// <summary>
     /// Scroll host + absolute stack. Width/heights applied in one Fit pass — no AutoSize feedback loops.
@@ -122,9 +122,20 @@ internal static class UiFactory
                     LayoutSectionInner(p, width);
                 else if (c is FlowLayoutPanel { FlowDirection: FlowDirection.TopDown } nested)
                     LayoutStackChild(nested, width);
-                else if (c is Panel row && c is not FlowLayoutPanel && c is not TableLayoutPanel)
+                else if (c is SettingRow settingRow)
                 {
-                    LayoutPlainPanel(row, width);
+                    settingRow.Width = width;
+                    settingRow.Height = 38;
+                }
+                else if (c is Panel actionRow && actionRow.Tag is ActionRowTag)
+                {
+                    // Horizontal action rows manage their own children — only stretch the row.
+                    actionRow.Width = width;
+                    ActionRowLayout.Apply(actionRow);
+                }
+                else if (c is Panel plainRow && c is not FlowLayoutPanel && c is not TableLayoutPanel and not SettingRow)
+                {
+                    LayoutPlainPanel(plainRow, width);
                 }
 
                 c.Width = width;
@@ -168,7 +179,17 @@ internal static class UiFactory
                 LayoutStackChild(nested, innerW);
             else if (c is Panel p && p.Tag is SectionTag)
                 LayoutSectionInner(p, innerW);
-            else if (c is Panel row && c is not TableLayoutPanel && row.Tag is not SectionTag)
+            else if (c is SettingRow sr)
+            {
+                sr.Width = innerW;
+                sr.Height = 38;
+            }
+            else if (c is Panel action && action.Tag is ActionRowTag)
+            {
+                action.Width = innerW;
+                ActionRowLayout.Apply(action);
+            }
+            else if (c is Panel row && c is not TableLayoutPanel and not SettingRow && row.Tag is not SectionTag and not ActionRowTag)
                 LayoutPlainPanel(row, innerW);
 
             c.Left = panel.Padding.Left;
@@ -186,13 +207,15 @@ internal static class UiFactory
 
         var innerW = Math.Max(100, width - 24);
         tag.Inner.Left = 12;
-        tag.Inner.Top = 28;
+        // Leave room for title; subtitle (if any) sits around y=22.
+        var top = tag.Inner.Top >= 36 ? tag.Inner.Top : 28;
+        tag.Inner.Top = top;
         tag.Inner.Width = innerW;
         LayoutStackChild(tag.Inner, innerW);
 
         var contentH = MeasureHeight(tag.Inner);
         tag.Inner.Height = Math.Max(RowH, contentH);
-        panel.Height = 28 + tag.Inner.Height + 12;
+        panel.Height = top + tag.Inner.Height + 12;
     }
 
     private static int MeasureHeight(Control c)
@@ -219,6 +242,41 @@ internal static class UiFactory
     {
         public required Control Inner { get; init; }
         public required Label Title { get; init; }
+    }
+
+    /// <summary>Marks a horizontal ActionRow so stack layout does not reflow its children vertically.</summary>
+    private sealed class ActionRowTag
+    {
+        public required (Control Control, int Width)[] Cells { get; init; }
+    }
+
+    internal static class ActionRowLayout
+    {
+        public static void Apply(Panel row)
+        {
+            if (row.Tag is not ActionRowTag tag) return;
+            var cells = tag.Cells;
+            var fixedSum = 0;
+            var flex = 0;
+            foreach (var (_, w) in cells)
+            {
+                if (w <= 0) flex++;
+                else fixedSum += w;
+            }
+
+            var gaps = (cells.Length + 1) * 4;
+            var flexW = flex > 0
+                ? Math.Max(64, (row.ClientSize.Width - gaps - fixedSum) / flex)
+                : 64;
+            var x = 4;
+            foreach (var (c, w) in cells)
+            {
+                var width = w <= 0 ? flexW : w;
+                c.SetBounds(x, 2, width, 32);
+                x += width + 4;
+            }
+            row.Height = 38;
+        }
     }
 
     public static TableLayoutPanel EqualRow(params Control[] controls)
@@ -293,7 +351,7 @@ internal static class UiFactory
 
     public static Panel Section(string title, Control inner, out Label titleLabel)
     {
-        var panel = new Panel
+        var panel = new BufferedPanel
         {
             BackColor = Theme.Panel,
             Margin = Padding.Empty,
@@ -305,9 +363,9 @@ internal static class UiFactory
         {
             Text = title,
             AutoSize = true,
-            Location = new Point(12, 6),
+            Location = new Point(14, 8),
             ForeColor = Theme.TextMuted,
-            Font = Theme.UiFontSmall,
+            Font = Theme.UiFontValue,
             BackColor = Theme.Panel
         };
 
@@ -320,6 +378,8 @@ internal static class UiFactory
 
         panel.Paint += (_, e) =>
         {
+            using (var bg = new SolidBrush(Theme.Panel))
+                e.Graphics.FillRectangle(bg, panel.ClientRectangle);
             using var pen = new Pen(Theme.Border);
             e.Graphics.DrawRectangle(pen, 0, 0, panel.ClientSize.Width - 1, panel.ClientSize.Height - 1);
         };
@@ -386,36 +446,64 @@ internal static class UiFactory
 
     public static void ApplyKind(Button b, BtnKind kind)
     {
+        // v2: one accent for CTA, danger for destructive, everything else neutral.
         switch (kind)
         {
             case BtnKind.Primary:
-                b.BackColor = Color.FromArgb(28, 64, 52);
+                b.BackColor = Theme.AccentDim;
                 b.FlatAppearance.BorderColor = Theme.Accent;
-                break;
-            case BtnKind.Accent:
-                b.BackColor = Color.FromArgb(28, 44, 72);
-                b.FlatAppearance.BorderColor = Theme.AccentBlue;
+                b.ForeColor = Theme.Text;
                 break;
             case BtnKind.Danger:
-                b.BackColor = Color.FromArgb(64, 32, 36);
-                b.FlatAppearance.BorderColor = Theme.AccentRed;
+                b.BackColor = Theme.DangerDim;
+                b.FlatAppearance.BorderColor = Theme.Danger;
+                b.ForeColor = Theme.Text;
                 break;
+            case BtnKind.Accent:
             case BtnKind.Warn:
-                b.BackColor = Color.FromArgb(64, 48, 28);
-                b.FlatAppearance.BorderColor = Theme.AccentOrange;
-                break;
             default:
                 b.BackColor = Theme.Button;
                 b.FlatAppearance.BorderColor = Theme.ButtonBorder;
+                b.ForeColor = Theme.Text;
                 break;
         }
     }
 
+    public static Panel SectionCard(string title, string? subtitle, Control inner, out Label titleLabel, out Label? subtitleLabel)
+    {
+        var panel = Section(title, inner, out titleLabel);
+        subtitleLabel = null;
+        if (string.IsNullOrEmpty(subtitle)) return panel;
+
+        subtitleLabel = new Label
+        {
+            Text = subtitle,
+            AutoSize = true,
+            Location = new Point(12, 22),
+            ForeColor = Theme.TextMuted,
+            Font = Theme.UiFontSmall,
+            BackColor = Theme.Panel,
+            MaximumSize = new Size(520, 0)
+        };
+        // Push body down for subtitle.
+        if (panel.Tag is SectionTag tag)
+        {
+            tag.Inner.Top = 40;
+            panel.Controls.Add(subtitleLabel);
+            subtitleLabel.BringToFront();
+        }
+        return panel;
+    }
+
+    public static SettingRow CreateSettingRow(SettingRowKind kind, string label, string value)
+        => new(kind, label, value);
+
     public static Label Lbl(string text, bool muted = false) => new()
     {
         Text = text,
+        // Muted = secondary info, still clearly readable on Panel/Bg.
         ForeColor = muted ? Theme.TextMuted : Theme.Text,
-        Font = Theme.UiFont,
+        Font = muted ? Theme.UiFontSmall : Theme.UiFont,
         AutoSize = true,
         Margin = new Padding(2, 8, 2, 2),
         TextAlign = ContentAlignment.MiddleLeft,
@@ -441,16 +529,148 @@ internal static class UiFactory
         return c;
     }
 
-    public static CheckBox Check(string text, bool value = false) => new()
+    public static DarkCheckBox Check(string text, bool value = false) => new()
     {
         Text = text,
         Checked = value,
-        ForeColor = Theme.Text,
-        Font = Theme.UiFont,
-        AutoSize = true,
-        Margin = new Padding(4, 6, 8, 4),
-        BackColor = Color.Transparent
+        Margin = new Padding(4, 6, 8, 4)
     };
+
+    /// <summary>Label | slider | value row (same layout as Fast Mount delay rows).</summary>
+    public static TableLayoutPanel DelaySliderRow(
+        string labelText,
+        int min,
+        int max,
+        int value,
+        Action<int> onChanged,
+        Action? onDragEnded = null,
+        int labelWidth = 210,
+        bool editableValue = false)
+    {
+        var delayLabel = new Label
+        {
+            Text = labelText,
+            ForeColor = Theme.Text,
+            Font = Theme.UiFont,
+            AutoSize = false,
+            Dock = DockStyle.Fill,
+            TextAlign = ContentAlignment.MiddleLeft,
+            Margin = new Padding(2, 0, 8, 0),
+            BackColor = Color.Transparent,
+            AutoEllipsis = true
+        };
+        var track = Slider(min, max, value);
+        track.Margin = new Padding(2, 4, 2, 4);
+
+        Control valueControl;
+        var valueWidth = 56;
+        if (!editableValue)
+        {
+            var val = new Label
+            {
+                Text = track.Value.ToString(),
+                ForeColor = Theme.TextMuted,
+                Font = Theme.UiFontValue,
+                AutoSize = false,
+                Dock = DockStyle.Fill,
+                TextAlign = ContentAlignment.MiddleRight,
+                Margin = new Padding(4, 0, 2, 0),
+                BackColor = Color.Transparent
+            };
+            track.ValueChanged += (_, _) =>
+            {
+                onChanged(track.Value);
+                val.Text = track.Value.ToString();
+            };
+            valueControl = val;
+        }
+        else
+        {
+            var box = new TextBox
+            {
+                Text = track.Value.ToString(),
+                BackColor = Theme.InputBg,
+                ForeColor = Theme.Text,
+                BorderStyle = BorderStyle.FixedSingle,
+                Font = Theme.UiFontValue,
+                TextAlign = HorizontalAlignment.Right,
+                Dock = DockStyle.Fill,
+                Margin = new Padding(8, 6, 2, 6),
+                AccessibleName = labelText
+            };
+            var sync = false;
+            track.ValueChanged += (_, _) =>
+            {
+                onChanged(track.Value);
+                if (sync || box.Focused) return;
+                box.Text = track.Value.ToString();
+            };
+            void Commit()
+            {
+                if (sync) return;
+                if (!int.TryParse(box.Text.Trim(), out var typed))
+                {
+                    box.Text = track.Value.ToString();
+                    return;
+                }
+
+                var clamped = Math.Clamp(typed, min, max);
+                box.Text = clamped.ToString();
+                if (clamped == track.Value) return;
+                sync = true;
+                try { track.Value = clamped; }
+                finally { sync = false; }
+                onDragEnded?.Invoke();
+            }
+            box.KeyPress += (_, e) =>
+            {
+                if (!char.IsControl(e.KeyChar) && !char.IsDigit(e.KeyChar))
+                    e.Handled = true;
+            };
+            box.KeyDown += (_, e) =>
+            {
+                if (e.KeyCode == Keys.Enter)
+                {
+                    Commit();
+                    e.SuppressKeyPress = true;
+                }
+                else if (e.KeyCode == Keys.Escape)
+                {
+                    box.Text = track.Value.ToString();
+                    e.SuppressKeyPress = true;
+                }
+            };
+            box.Leave += (_, _) => Commit();
+            box.Enter += (_, _) => box.SelectAll();
+            valueControl = box;
+            valueWidth = Math.Max(
+                TextRenderer.MeasureText("200", Theme.UiFontValue).Width + 22,
+                Theme.UiFont.Height * 4);
+        }
+
+        if (onDragEnded != null)
+            track.DragEnded += (_, _) => onDragEnded();
+
+        var row = new TableLayoutPanel
+        {
+            ColumnCount = 3,
+            RowCount = 1,
+            Height = RowH + 4,
+            Margin = new Padding(0, 0, 0, 4),
+            BackColor = Color.Transparent,
+            Padding = Padding.Empty
+        };
+        row.RowStyles.Add(new RowStyle(SizeType.Absolute, RowH + 4));
+        row.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, labelWidth));
+        row.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        row.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, valueWidth));
+        row.Controls.Add(delayLabel, 0, 0);
+        row.Controls.Add(track, 1, 0);
+        row.Controls.Add(valueControl, 2, 0);
+        return row;
+    }
+
+    public static NavSectionHeader NavGroupLabel(string text) => new(text);
 
     public static DarkSlider Slider(int min, int max, int value) => new()
     {
@@ -476,27 +696,7 @@ internal static class UiFactory
         BorderStyle = BorderStyle.FixedSingle
     };
 
-    public static Button NavBtn(string text)
-    {
-        var b = new Button
-        {
-            Text = text,
-            FlatStyle = FlatStyle.Flat,
-            Dock = DockStyle.Top,
-            Height = 40,
-            Font = Theme.UiFontNav,
-            ForeColor = Theme.Text,
-            BackColor = Theme.NavIdle,
-            TextAlign = ContentAlignment.MiddleLeft,
-            Padding = new Padding(14, 0, 8, 0),
-            Cursor = Cursors.Hand,
-            UseVisualStyleBackColor = false,
-            Margin = Padding.Empty
-        };
-        b.FlatAppearance.BorderSize = 0;
-        b.FlatAppearance.MouseOverBackColor = Theme.NavHover;
-        return b;
-    }
+    public static NavItemButton NavBtn(string text) => new(text);
 
     public static Button Chip(string text, bool active)
     {
@@ -508,40 +708,26 @@ internal static class UiFactory
     }
 
     /// <summary>Lightweight fixed-height row; items with Tag="fix" share remaining width.</summary>
+    /// <summary>Lightweight fixed-height row; width &lt;= 0 cells share remaining width.</summary>
     public static Panel ActionRow(params (Control Control, int Width)[] cells)
     {
         var row = new Panel
         {
             Height = 36,
             Margin = new Padding(0, 0, 0, 4),
-            BackColor = Color.Transparent
+            BackColor = Color.Transparent,
+            Tag = new ActionRowTag { Cells = cells }
         };
 
-        row.Resize += (_, _) =>
-        {
-            var fixedSum = 0;
-            var flex = 0;
-            foreach (var (c, w) in cells)
-            {
-                if (w <= 0) flex++;
-                else fixedSum += w;
-            }
-
-            var gaps = (cells.Length + 1) * 4;
-            var flexW = flex > 0
-                ? Math.Max(64, (row.ClientSize.Width - gaps - fixedSum) / flex)
-                : 64;
-            var x = 4;
-            foreach (var (c, w) in cells)
-            {
-                var width = w <= 0 ? flexW : w;
-                c.SetBounds(x, 2, width, 32);
-                x += width + 4;
-            }
-        };
+        row.Resize += (_, _) => ActionRowLayout.Apply(row);
 
         foreach (var (c, _) in cells)
+        {
+            if (c is DarkCheckBox cb)
+                cb.AutoSize = false;
             row.Controls.Add(c);
+        }
+
         return row;
     }
 }

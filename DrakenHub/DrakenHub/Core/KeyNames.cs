@@ -4,7 +4,7 @@ internal static class KeyNames
 {
     private static readonly Dictionary<Keys, string> Special = new()
     {
-        [Keys.None] = "Нет",
+        [Keys.None] = "None",
         [Keys.Insert] = "Insert",
         [Keys.End] = "End",
         [Keys.Home] = "Home",
@@ -46,7 +46,7 @@ internal static class KeyNames
 
     public static string Format(Keys key)
     {
-        if (key == Keys.None) return "Нет";
+        if (key == Keys.None) return "None";
         if (Special.TryGetValue(key, out var name)) return name;
         if (key is >= Keys.D0 and <= Keys.D9) return ((char)('0' + (key - Keys.D0))).ToString();
         if (key is >= Keys.A and <= Keys.Z) return key.ToString();

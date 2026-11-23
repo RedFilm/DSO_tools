@@ -6,6 +6,10 @@ namespace DrakenHub.UI;
 
 internal sealed partial class MainForm : Form
 {
+    // Flip these when features leave WIP.
+    private static readonly HashSet<string> MutedNavIds = ["gearswap", "autocast"];
+    private static readonly bool SmeltMuted = true;
+
     private readonly SettingsService _settings = new();
     private readonly Localization _loc = new();
     private readonly InputService _input = new();
@@ -18,17 +22,25 @@ internal sealed partial class MainForm : Form
     private readonly SplitContainer _shell = new();
     private readonly Panel _navRail = new();
     private readonly Panel _contentHost = new();
+    private readonly Panel _statusBar = new();
+    private readonly Label _statusLeft = new();
+    private readonly Label _statusRight = new();
     private readonly Dictionary<string, Panel> _pages = new();
-    private readonly Dictionary<string, Button> _navButtons = new();
+    private readonly Dictionary<string, NavItemButton> _navButtons = new();
     private readonly System.Windows.Forms.Timer _persistTimer = new() { Interval = 280 };
+    private readonly System.Windows.Forms.Timer _statusTimer = new() { Interval = 400 };
+    private readonly ToolTip _toolTips = new();
+    private NotifyIcon? _tray;
 
-    private string _activePage = "inventory";
+    private string _activePage = "play";
     private string _inventorySub = "sell";
     private GridOverlayForm? _gridOverlay;
     private bool _hidden;
     private bool _persistQueued;
     private bool _persistHotkeys;
     private bool _persistGrid;
+    private string _statusMessage = "";
+    private DateTime _statusMessageUntil;
 
     private Action? _refreshInventory;
     private Action? _refreshGearSwap;
@@ -37,19 +49,24 @@ internal sealed partial class MainForm : Form
     private Action? _refreshAutoCast;
     private Action? _refreshSpeedBoost;
     private Action? _refreshAllLabels;
+    private Action? _refreshChecklist;
+    private Action? _refreshBindingMap;
     private string _speedBoostStatusKey = "disabled";
+    /// <summary>Suppress combo SelectedIndexChanged side-effects while relocalizing / refreshing labels.</summary>
+    private bool _suppressUiEvents;
 
     private static readonly (string Id, string Key)[] NavItems =
     [
+        ("play", "nav.binding"),
         ("inventory", "tab.inventory"),
         ("autoclicker", "tab.autoclicker"),
         ("fastmount", "tab.fastmount"),
         ("extraskill", "tab.extraskill"),
-        ("gearswap", "tab.gearswap"),
-        ("autocast", "tab.autocast"),
         ("teleport", "tab.teleport"),
         ("speedboost", "tab.speedboost"),
-        ("settings", "tab.settings")
+        ("settings", "tab.settings"),
+        ("gearswap", "tab.gearswap"),
+        ("autocast", "tab.autocast")
     ];
 
     public MainForm()
@@ -62,12 +79,25 @@ internal sealed partial class MainForm : Form
         {
             _speedBoostStatusKey = key;
             if (IsHandleCreated)
-                BeginInvoke(() => _refreshSpeedBoost?.Invoke());
+                BeginInvoke(() =>
+                {
+                    _refreshSpeedBoost?.Invoke();
+                    RefreshStatusBar();
+                });
         };
         _speedBoost.StateChanged += () =>
         {
             if (IsHandleCreated)
-                BeginInvoke(() => _refreshSpeedBoost?.Invoke());
+                BeginInvoke(() =>
+                {
+                    _refreshSpeedBoost?.Invoke();
+                    RefreshStatusBar();
+                });
+        };
+        _autoClicker.ActivityChanged += () =>
+        {
+            if (IsHandleCreated)
+                BeginInvoke(RefreshStatusBar);
         };
 
         _settings.Load();
@@ -95,10 +125,12 @@ internal sealed partial class MainForm : Form
                 FlushPersist();
             }
         };
+        _statusTimer.Tick += (_, _) => RefreshStatusBar();
 
         BuildChrome();
+        BuildTray();
         BuildPages();
-        ShowPage("inventory");
+        ShowPage("play");
 
         _hotkeys.Attach(this);
         _autoClicker.AttachRawKeys(_hotkeys);
@@ -109,6 +141,9 @@ internal sealed partial class MainForm : Form
             _autoClicker.ApplySettings();
             _autoCast.ApplySettings();
             UpdateGridOverlay();
+            _statusTimer.Start();
+            RefreshStatusBar();
+            MaybeShowFirstRunWizard();
         };
         Shown += (_, _) => PlaceShell();
         FormClosing += (_, _) =>
@@ -125,14 +160,17 @@ internal sealed partial class MainForm : Form
             _autoCast.Dispose();
             _speedBoost.Dispose();
             _persistTimer.Dispose();
+            _statusTimer.Dispose();
+            _toolTips.Dispose();
+            if (_tray != null)
+            {
+                _tray.Visible = false;
+                _tray.Dispose();
+            }
             _gridOverlay?.Close();
         };
     }
 
-    /// <summary>
-    /// Restore size/position from settings, but never open minimized or off any screen
-    /// (Windows reports -32000,-32000 while minimized).
-    /// </summary>
     private void ApplySavedBounds()
     {
         var s = _settings.Current;
@@ -141,7 +179,6 @@ internal sealed partial class MainForm : Form
         var x = s.WindowX;
         var y = s.WindowY;
 
-        // Minimized / invalid sentinel from a previous session.
         if (x <= -10000 || y <= -10000 || w < MinimumSize.Width || h < MinimumSize.Height)
         {
             StartPosition = FormStartPosition.CenterScreen;
@@ -164,7 +201,6 @@ internal sealed partial class MainForm : Form
 
     private void SaveWindowBounds()
     {
-        // Don't persist minimized / hidden-offscreen coordinates.
         if (WindowState == FormWindowState.Minimized || Left <= -10000 || Top <= -10000)
             return;
 
@@ -202,7 +238,6 @@ internal sealed partial class MainForm : Form
         _shell.FixedPanel = FixedPanel.Panel1;
         _shell.SplitterWidth = 6;
         _shell.BackColor = Theme.Border;
-        // Min sizes / distance set in PlaceShell after real width is known.
 
         _navRail.Dock = DockStyle.Fill;
         _navRail.BackColor = Theme.Panel;
@@ -227,21 +262,46 @@ internal sealed partial class MainForm : Form
             WrapContents = false,
             AutoScroll = true,
             BackColor = Theme.Panel,
-            Padding = new Padding(0, 4, 0, 8)
+            Padding = new Padding(0, 2, 0, 12)
         };
 
-        foreach (var (id, key) in NavItems)
+        void SyncNavWidths()
         {
-            var pageId = id;
-            var btn = UiFactory.NavBtn(_loc.T(key));
-            btn.Dock = DockStyle.None;
-            btn.Width = 188;
-            btn.Height = 40;
-            btn.Margin = new Padding(0, 0, 0, 2);
-            btn.Click += (_, _) => ShowPage(pageId);
-            _navButtons[id] = btn;
-            navButtons.Controls.Add(btn);
+            var w = Math.Max(120, navButtons.ClientSize.Width);
+            foreach (Control c in navButtons.Controls)
+                c.Width = w;
         }
+
+        void AddGroup(string key, bool first = false)
+        {
+            var header = UiFactory.NavGroupLabel(_loc.T(key));
+            header.Tag = key;
+            if (first)
+                header.Margin = new Padding(0, 4, 0, 4);
+            navButtons.Controls.Add(header);
+        }
+
+        AddGroup("nav.tools", first: true);
+        foreach (var id in new[] { "inventory", "autoclicker", "fastmount", "extraskill", "teleport", "speedboost" })
+        {
+            var item = NavItems.First(n => n.Id == id);
+            AddNavButton(navButtons, item.Id, item.Key);
+        }
+
+        AddGroup("nav.play");
+        AddNavButton(navButtons, "play", "nav.binding");
+        AddNavButton(navButtons, "settings", "tab.settings");
+
+        AddGroup("nav.group.soon");
+        foreach (var id in new[] { "gearswap", "autocast" })
+        {
+            var item = NavItems.First(n => n.Id == id);
+            AddNavButton(navButtons, item.Id, item.Key);
+        }
+
+        navButtons.Resize += (_, _) => SyncNavWidths();
+        navButtons.HandleCreated += (_, _) => SyncNavWidths();
+        SyncNavWidths();
 
         _navRail.Controls.Add(navButtons);
         _navRail.Controls.Add(brand);
@@ -250,9 +310,84 @@ internal sealed partial class MainForm : Form
         _contentHost.BackColor = Theme.Bg;
         _contentHost.Padding = Padding.Empty;
 
+        _statusBar.Dock = DockStyle.Bottom;
+        _statusBar.Height = 28;
+        _statusBar.BackColor = Theme.Panel;
+        _statusBar.Padding = new Padding(10, 0, 10, 0);
+        _statusLeft.Dock = DockStyle.Fill;
+        _statusLeft.ForeColor = Theme.TextMuted;
+        _statusLeft.Font = Theme.UiFontSmall;
+        _statusLeft.TextAlign = ContentAlignment.MiddleLeft;
+        _statusRight.Dock = DockStyle.Right;
+        _statusRight.AutoSize = false;
+        _statusRight.Width = 220;
+        _statusRight.ForeColor = Theme.TextMuted;
+        _statusRight.Font = Theme.UiFontSmall;
+        _statusRight.TextAlign = ContentAlignment.MiddleRight;
+        _statusBar.Controls.Add(_statusLeft);
+        _statusBar.Controls.Add(_statusRight);
+        _statusBar.Paint += (_, e) =>
+        {
+            using var pen = new Pen(Theme.Border);
+            e.Graphics.DrawLine(pen, 0, 0, _statusBar.Width, 0);
+        };
+
         _shell.Panel1.Controls.Add(_navRail);
         _shell.Panel2.Controls.Add(_contentHost);
         Controls.Add(_shell);
+        Controls.Add(_statusBar);
+    }
+
+    private void AddNavButton(FlowLayoutPanel host, string id, string key)
+    {
+        var pageId = id;
+        var muted = MutedNavIds.Contains(id);
+        var btn = UiFactory.NavBtn(_loc.T(key));
+        btn.Width = Math.Max(120, host.ClientSize.Width);
+        btn.IsMuted = muted;
+        if (muted)
+            _toolTips.SetToolTip(btn, _loc.T("wip.tooltip"));
+        else
+            btn.Click += (_, _) => ShowPage(pageId);
+
+        _navButtons[id] = btn;
+        host.Controls.Add(btn);
+    }
+
+    private void BuildTray()
+    {
+        _tray = new NotifyIcon
+        {
+            Text = "DrakenHub",
+            Icon = SystemIcons.Application,
+            Visible = true
+        };
+        var menu = new ContextMenuStrip();
+        var showItem = new ToolStripMenuItem(_loc.T("tray.show"));
+        showItem.Click += (_, _) => RestoreFromTray();
+        var exitItem = new ToolStripMenuItem(_loc.T("tray.exit"));
+        exitItem.Click += (_, _) => Close();
+        menu.Items.Add(showItem);
+        menu.Items.Add(exitItem);
+        _tray.ContextMenuStrip = menu;
+        _tray.DoubleClick += (_, _) => RestoreFromTray();
+        _tray.Tag = menu;
+    }
+
+    private void RelocalizeTray()
+    {
+        if (_tray?.ContextMenuStrip is not { } menu || menu.Items.Count < 2) return;
+        menu.Items[0].Text = _loc.T("tray.show");
+        menu.Items[1].Text = _loc.T("tray.exit");
+    }
+
+    private void RestoreFromTray()
+    {
+        _hidden = false;
+        Visible = true;
+        Show();
+        WindowState = FormWindowState.Normal;
+        Activate();
     }
 
     private void PlaceShell()
@@ -280,34 +415,24 @@ internal sealed partial class MainForm : Form
             _shell.Panel2MinSize = p2;
             _shell.SplitterDistance = Math.Clamp(target, min, max);
         }
-        catch (InvalidOperationException)
-        {
-            // Container not laid out yet — retry on next Shown/Load.
-        }
-        catch (ArgumentException)
-        {
-        }
+        catch (InvalidOperationException) { }
+        catch (ArgumentException) { }
     }
 
     private void ShowPage(string id)
     {
+        if (MutedNavIds.Contains(id))
+            id = "play";
+
         _activePage = id;
         foreach (var pair in _navButtons)
         {
-            var active = pair.Key == id;
-            pair.Value.BackColor = active ? Theme.NavActive : Theme.NavIdle;
-            pair.Value.ForeColor = Theme.Text;
+            pair.Value.IsMuted = MutedNavIds.Contains(pair.Key);
+            pair.Value.IsActive = pair.Key == id;
         }
 
         foreach (var pair in _pages)
             pair.Value.Visible = pair.Key == id;
-
-        if (_pages.TryGetValue(id, out var page) && !_contentHost.Controls.Contains(page))
-        {
-            page.Dock = DockStyle.Fill;
-            page.Visible = true;
-            _contentHost.Controls.Add(page);
-        }
     }
 
     private void ToggleVisible()
@@ -318,6 +443,11 @@ internal sealed partial class MainForm : Form
         {
             Show();
             Activate();
+        }
+        else if (_tray != null)
+        {
+            _tray.Visible = true;
+            _tray.ShowBalloonTip(1500, "DrakenHub", _loc.T("tray.show"), ToolTipIcon.Info);
         }
     }
 
@@ -334,12 +464,15 @@ internal sealed partial class MainForm : Form
             _contentHost.Controls.Add(page);
         }
 
+        Put("play", BuildPlayPage());
         Put("inventory", BuildInventoryPage());
         Put("autoclicker", BuildAutoClickerPage());
         Put("fastmount", BuildFastMountPage());
         Put("extraskill", BuildExtraSkillPage());
-        Put("gearswap", BuildGearSwapPage());
-        Put("autocast", BuildAutoCastPage());
+        if (!MutedNavIds.Contains("gearswap"))
+            Put("gearswap", BuildGearSwapPage());
+        if (!MutedNavIds.Contains("autocast"))
+            Put("autocast", BuildAutoCastPage());
         Put("teleport", BuildTeleportPage());
         Put("speedboost", BuildSpeedBoostPage());
         Put("settings", BuildSettingsPage());
@@ -372,12 +505,15 @@ internal sealed partial class MainForm : Form
             _autoClicker.ApplySettings();
             _autoCast.ApplySettings();
             _persistHotkeys = false;
+            _refreshBindingMap?.Invoke();
         }
         if (_persistGrid)
         {
             UpdateGridOverlay();
             _persistGrid = false;
         }
+        _refreshChecklist?.Invoke();
+        RefreshStatusBar();
     }
 
     private void SyncSharedBindings()
@@ -401,7 +537,21 @@ internal sealed partial class MainForm : Form
         s.GearSwap.MainPanelHotkey = value;
     }
 
-    private bool TryAssignLaunchHotkey(Keys pressed, Action<string?> assign, string? exceptId = null)
+    private string FormatHotkeyLabel(string labelKey, string? stored)
+    {
+        var key = KeyNames.Parse(stored);
+        var display = key == Keys.None ? _loc.T("none") : KeyNames.Display(stored);
+        return $"{_loc.T(labelKey)} — [{display}]";
+    }
+
+    private string FormatCoordLabel(string labelKey, ScreenPoint? p)
+    {
+        return p == null
+            ? $"{_loc.T(labelKey)} — {_loc.T("none")}"
+            : $"{_loc.T(labelKey)} — ({p.X}, {p.Y})";
+    }
+
+    private bool TryAssignHotkey(Keys pressed, Action<string?> assign, string? exceptId = null)
     {
         if (pressed == Keys.Escape)
         {
@@ -410,7 +560,7 @@ internal sealed partial class MainForm : Form
             return true;
         }
 
-        if (IsLaunchConflict(pressed, exceptId))
+        if (IsHotkeyConflict(pressed, exceptId))
         {
             MessageBox.Show(_loc.T("conflict"), _loc.T("notify"), MessageBoxButtons.OK, MessageBoxIcon.Warning);
             return false;
@@ -421,7 +571,7 @@ internal sealed partial class MainForm : Form
         return true;
     }
 
-    private bool IsLaunchConflict(Keys key, string? exceptId)
+    private bool IsHotkeyConflict(Keys key, string? exceptId)
     {
         if (key == Keys.None) return false;
         var s = _settings.Current;
@@ -429,18 +579,40 @@ internal sealed partial class MainForm : Form
             id != exceptId && KeyNames.Parse(stored) == key;
 
         if (Same(s.Inventory.SellAllHotkey, "sell.all")) return true;
-        if (Same(s.Inventory.SellCurrentHotkey, "sell.current")) return true;
-        if (Same(s.Inventory.SmeltHotkey, "smelt")) return true;
+        if (!SmeltMuted && Same(s.Inventory.SmeltHotkey, "smelt")) return true;
+        if (Same(s.Inventory.InventoryHotkey, "util.inv")) return true;
+        if (Same(s.Inventory.SkillsWindowHotkey, "util.skills")) return true;
+        if (Same(s.FastMount.MountHotkey, "util.mount")) return true;
         if (Same(s.FastMount.FastMountHotkey, "fastmount")) return true;
         if (Same(s.FastMount.JumpMountHotkey, "jumpmount")) return true;
+        if (Same(s.FastMount.MainPanelHotkey, "util.main")) return true;
+        if (Same(s.FastMount.JumpTargetPanelHotkey, "util.jumpTarget")) return true;
+        if (Same(s.FastMount.JumpSkillHotkey, "util.jumpSkill")) return true;
         foreach (var p in s.ExtraSkill.Profiles)
+        {
             if (Same(p.Hotkey, "es:" + p.Id)) return true;
-        foreach (var p in s.GearSwap.Profiles)
-            if (Same(p.Hotkey, "gs:" + p.Id)) return true;
+            if (Same(p.TargetPanelHotkey, "es.t:" + p.Id)) return true;
+            if (Same(p.SkillSlotHotkey, "es.s:" + p.Id)) return true;
+        }
+        if (!MutedNavIds.Contains("gearswap"))
+        {
+            foreach (var p in s.GearSwap.Profiles)
+            {
+                if (Same(p.Hotkey, "gs:" + p.Id)) return true;
+                if (Same(p.TargetPanelHotkey, "gs.t:" + p.Id)) return true;
+                if (Same(p.SkillSlotHotkey, "gs.s:" + p.Id)) return true;
+            }
+        }
         foreach (var p in s.FastTeleport.Locations)
             if (Same(p.Hotkey, "tp:" + p.Id)) return true;
-        for (var i = 0; i < s.AutoCast.Rows.Count; i++)
-            if (Same(s.AutoCast.Rows[i].ToggleHotkey, "ac:" + i)) return true;
+        if (!MutedNavIds.Contains("autocast"))
+        {
+            for (var i = 0; i < s.AutoCast.Rows.Count; i++)
+            {
+                if (Same(s.AutoCast.Rows[i].ToggleHotkey, "ac:" + i)) return true;
+                if (Same(s.AutoCast.Rows[i].SkillHotkey, "ac.skill:" + i)) return true;
+            }
+        }
         if (Same(s.WindowHotkeys.HideShow, "win.hide")) return true;
         if (Same(s.WindowHotkeys.Exit, "win.exit")) return true;
         if (Same(s.WindowHotkeys.EmergencyStop, "win.stop")) return true;
@@ -452,65 +624,116 @@ internal sealed partial class MainForm : Form
 
     private void BindLaunchButton(Button button, Func<string?> getter, Action<string?> setter, string id, string labelKey)
     {
-        void Refresh() => button.Text = $"{_loc.T(labelKey)}: {KeyNames.Display(getter())}";
+        void Refresh() => button.Text = FormatHotkeyLabel(labelKey, getter());
         Refresh();
+        _toolTips.SetToolTip(button, _loc.T("tt.hotkey"));
         button.Click += (_, _) =>
         {
             button.Text = _loc.T("pressAny");
             _hotkeys.BeginCapture(key =>
             {
-                TryAssignLaunchHotkey(key, setter, id);
+                TryAssignHotkey(key, setter, id);
                 Refresh();
+            });
+        };
+        _refreshAllLabels += () =>
+        {
+            Refresh();
+            _toolTips.SetToolTip(button, _loc.T("tt.hotkey"));
+        };
+    }
+
+    private void BindHotkeyRow(SettingRow row, Func<string?> getter, Action<string?> setter, string id, string labelKey)
+    {
+        void Refresh()
+        {
+            row.LabelText = _loc.T(labelKey);
+            var k = KeyNames.Parse(getter());
+            row.ValueDanger = false;
+            row.ValueText = k == Keys.None ? _loc.T("not.set") : KeyNames.Display(getter());
+        }
+        Refresh();
+        row.Activated += (_, _) =>
+        {
+            row.ValueText = _loc.T("pressAny");
+            row.ValueDanger = false;
+            _hotkeys.BeginCapture(key =>
+            {
+                TryAssignHotkey(key, setter, id);
+                Refresh();
+                _refreshBindingMap?.Invoke();
             });
         };
         _refreshAllLabels += Refresh;
     }
 
-    private void BindUtilityKeyButton(Button button, Func<string?> getter, Action<string?> setter, string labelKey)
+    private void BindCoordRow(SettingRow row, Func<ScreenPoint?> getter, Action<ScreenPoint?> setter, string labelKey, bool useOrigin = false, Func<int>? sizeProvider = null)
     {
-        void Refresh() => button.Text = $"{_loc.T(labelKey)}: {KeyNames.Display(getter())}";
+        void Refresh()
+        {
+            row.LabelText = _loc.T(labelKey);
+            var p = getter();
+            row.ValueDanger = false;
+            row.ValueText = p == null ? _loc.T("not.set") : $"({p.X}, {p.Y})";
+        }
         Refresh();
+        row.Activated += (_, _) => PickCoord(
+            setter,
+            Refresh,
+            sizeProvider?.Invoke() ?? Math.Max(16, _settings.Current.Inventory.Grid.CrosshairSize),
+            useOrigin);
+        _refreshAllLabels += Refresh;
+    }
+
+    private void BindCoordRow(SettingRow row, Func<ScreenPoint?> getter, Action<ScreenPoint?> setter, string labelKey, Func<int> sizeProvider, bool useOrigin = true)
+        => BindCoordRow(row, getter, setter, labelKey, useOrigin, sizeProvider);
+
+    private void BindUtilityKeyButton(Button button, Func<string?> getter, Action<string?> setter, string labelKey, string? conflictId = null)
+    {
+        var id = conflictId ?? "util:" + labelKey;
+        void Refresh() => button.Text = FormatHotkeyLabel(labelKey, getter());
+        Refresh();
+        _toolTips.SetToolTip(button, _loc.T("tt.hotkey"));
         button.Click += (_, _) =>
         {
             button.Text = _loc.T("pressAny");
             _hotkeys.BeginCapture(key =>
             {
-                if (key == Keys.Escape) setter(null);
-                else setter(KeyNames.Format(key));
-                Persist(immediate: true);
+                TryAssignHotkey(key, setter, id);
                 Refresh();
             });
         };
-        _refreshAllLabels += Refresh;
+        _refreshAllLabels += () =>
+        {
+            Refresh();
+            _toolTips.SetToolTip(button, _loc.T("tt.hotkey"));
+        };
     }
 
     private void BindCoordButton(Button button, Func<ScreenPoint?> getter, Action<ScreenPoint?> setter, string labelKey, int? size = null)
     {
-        void Refresh()
-        {
-            var p = getter();
-            button.Text = p == null
-                ? $"{_loc.T(labelKey)}: {_loc.T("none")}"
-                : $"{_loc.T(labelKey)}: {p}";
-        }
+        void Refresh() => button.Text = FormatCoordLabel(labelKey, getter());
         Refresh();
+        _toolTips.SetToolTip(button, _loc.T("tt.coord"));
         button.Click += (_, _) => PickCoord(setter, Refresh, size ?? Math.Max(16, _settings.Current.Inventory.Grid.CrosshairSize), useOrigin: false);
-        _refreshAllLabels += Refresh;
+        _refreshAllLabels += () =>
+        {
+            Refresh();
+            _toolTips.SetToolTip(button, _loc.T("tt.coord"));
+        };
     }
 
     private void BindCoordButton(Button button, Func<ScreenPoint?> getter, Action<ScreenPoint?> setter, string labelKey, Func<int> sizeProvider)
     {
-        void Refresh()
-        {
-            var p = getter();
-            button.Text = p == null
-                ? $"{_loc.T(labelKey)}: {_loc.T("none")}"
-                : $"{_loc.T(labelKey)}: {p}";
-        }
+        void Refresh() => button.Text = FormatCoordLabel(labelKey, getter());
         Refresh();
-        // First cell / map item: store top-left of the picker square (grid origin), not cursor center.
+        _toolTips.SetToolTip(button, _loc.T("tt.coord"));
         button.Click += (_, _) => PickCoord(setter, Refresh, sizeProvider(), useOrigin: true);
-        _refreshAllLabels += Refresh;
+        _refreshAllLabels += () =>
+        {
+            Refresh();
+            _toolTips.SetToolTip(button, _loc.T("tt.coord"));
+        };
     }
 
     private void PickCoord(Action<ScreenPoint?> setter, Action refresh, int pickSize, bool useOrigin)
@@ -518,7 +741,7 @@ internal sealed partial class MainForm : Form
         var gridWasVisible = _gridOverlay is { Visible: true };
         if (_gridOverlay != null) _gridOverlay.Visible = false;
 
-        using var overlay = new OverlayForm(pickSize, rectangle: true);
+        using var overlay = new OverlayForm(pickSize, rectangle: true, hintText: _loc.T("overlay.hint"));
         Hide();
         overlay.ShowDialog();
         Show();
@@ -536,6 +759,7 @@ internal sealed partial class MainForm : Form
         if (gridWasVisible && _gridOverlay != null)
             _gridOverlay.Visible = true;
         refresh();
+        _refreshChecklist?.Invoke();
     }
 
     private void BindCellButton(Button button, Func<CellRef?> getter, Action<CellRef?> setter, string labelKey)
@@ -544,14 +768,15 @@ internal sealed partial class MainForm : Form
         {
             var c = getter();
             button.Text = c == null
-                ? $"{_loc.T(labelKey)}: {_loc.T("none")}"
-                : $"{_loc.T(labelKey)}: {c}";
+                ? $"{_loc.T(labelKey)} — {_loc.T("none")}"
+                : $"{_loc.T(labelKey)} — {c}";
         }
         Refresh();
+        _toolTips.SetToolTip(button, _loc.T("tt.coord"));
         button.Click += (_, _) =>
         {
             var size = _settings.Current.Inventory.Grid.CellSize;
-            using var overlay = new OverlayForm(size, rectangle: true);
+            using var overlay = new OverlayForm(size, rectangle: true, hintText: _loc.T("overlay.hint"));
             Hide();
             overlay.ShowDialog();
             Show();
@@ -566,7 +791,11 @@ internal sealed partial class MainForm : Form
             Persist(immediate: true, grid: true);
             Refresh();
         };
-        _refreshAllLabels += Refresh;
+        _refreshAllLabels += () =>
+        {
+            Refresh();
+            _toolTips.SetToolTip(button, _loc.T("tt.coord"));
+        };
     }
 
     private CellRef GuessCellFromPoint(Point screen)
@@ -588,12 +817,12 @@ internal sealed partial class MainForm : Form
     {
         if (_settings.Current.Inventory.FirstCell == null)
         {
-            MessageBox.Show("Сначала задайте «Первая ячейка».", _loc.T("notify"));
+            MessageBox.Show(_loc.T("need.firstCell"), _loc.T("notify"));
             return;
         }
 
         var size = _settings.Current.Inventory.Grid.CrosshairSize;
-        using var overlay = new OverlayForm(size, rectangle: false);
+        using var overlay = new OverlayForm(size, rectangle: false, hintText: _loc.T("overlay.hint"));
         Hide();
         overlay.ShowDialog();
         Show();
@@ -610,6 +839,37 @@ internal sealed partial class MainForm : Form
             ColorArgb = color.ToArgb()
         });
         Persist(immediate: true, hotkeys: false, grid: true);
+    }
+
+    private bool ConfirmAction(string messageKey) =>
+        MessageBox.Show(_loc.T(messageKey), _loc.T("notify"), MessageBoxButtons.YesNo, MessageBoxIcon.Warning) == DialogResult.Yes;
+
+    private void SetStatusMessage(string message, int ms = 3500)
+    {
+        _statusMessage = message;
+        _statusMessageUntil = DateTime.UtcNow.AddMilliseconds(ms);
+        RefreshStatusBar();
+    }
+
+    private void RefreshStatusBar()
+    {
+        if (!IsHandleCreated) return;
+        var parts = new List<string>();
+        if (_macros.IsRunning) parts.Add(_loc.T("status.macro"));
+        if (_autoClicker.IsAnyActive) parts.Add(_loc.T("status.clicker"));
+        if (_speedBoost.IsEnabled || _speedBoost.IsLaunching) parts.Add(_loc.T("status.speedboost"));
+
+        var left = parts.Count == 0 ? _loc.T("status.idle") : string.Join(" · ", parts);
+        if (!string.IsNullOrEmpty(_statusMessage) && DateTime.UtcNow < _statusMessageUntil)
+            left = _statusMessage;
+        else
+            _statusMessage = "";
+
+        _statusLeft.Text = left;
+        var stopKey = KeyNames.Display(_settings.Current.WindowHotkeys.EmergencyStop);
+        if (KeyNames.Parse(_settings.Current.WindowHotkeys.EmergencyStop) == Keys.None)
+            stopKey = _loc.T("none");
+        _statusRight.Text = _loc.Tf("status.stopHint", stopKey);
     }
 
     private void UpdateGridOverlay()
@@ -642,12 +902,14 @@ internal sealed partial class MainForm : Form
     {
         _hotkeys.UnregisterAll();
         var s = _settings.Current;
+        var failed = new List<string>();
 
         void Reg(string id, string? keyName, Action action)
         {
             var key = KeyNames.Parse(keyName);
             if (key == Keys.None) return;
-            _hotkeys.Register(id, key, action);
+            if (!_hotkeys.Register(id, key, action))
+                failed.Add($"{id} ({KeyNames.Display(keyName)})");
         }
 
         Reg("win.hide", s.WindowHotkeys.HideShow, ToggleVisible);
@@ -661,11 +923,12 @@ internal sealed partial class MainForm : Form
             Persist(immediate: true);
             _refreshAutoCast?.Invoke();
             _refreshSpeedBoost?.Invoke();
+            SetStatusMessage(_loc.T("status.stopped"));
         });
 
         Reg("sell.all", s.Inventory.SellAllHotkey, () => _macros.SellAll());
-        Reg("sell.current", s.Inventory.SellCurrentHotkey, () => _macros.SellCurrent());
-        Reg("smelt", s.Inventory.SmeltHotkey, () => _macros.Smelt());
+        if (!SmeltMuted)
+            Reg("smelt", s.Inventory.SmeltHotkey, () => _macros.Smelt());
         Reg("fastmount", s.FastMount.FastMountHotkey, () => _macros.FastMount());
         Reg("jumpmount", s.FastMount.JumpMountHotkey, () => _macros.JumpMount());
 
@@ -674,24 +937,30 @@ internal sealed partial class MainForm : Form
             var profile = p;
             Reg("es:" + profile.Id, profile.Hotkey, () => _macros.ExtraSkill(profile));
         }
-        foreach (var p in s.GearSwap.Profiles)
+        if (!MutedNavIds.Contains("gearswap"))
         {
-            var profile = p;
-            Reg("gs:" + profile.Id, profile.Hotkey, () => _macros.GearSwap(profile));
+            foreach (var p in s.GearSwap.Profiles)
+            {
+                var profile = p;
+                Reg("gs:" + profile.Id, profile.Hotkey, () => _macros.GearSwap(profile));
+            }
         }
         foreach (var p in s.FastTeleport.Locations)
         {
             var loc = p;
             Reg("tp:" + loc.Id, loc.Hotkey, () => _macros.Teleport(loc));
         }
-        for (var i = 0; i < s.AutoCast.Rows.Count; i++)
+        if (!MutedNavIds.Contains("autocast"))
         {
-            var index = i;
-            Reg("ac:" + index, s.AutoCast.Rows[index].ToggleHotkey, () =>
+            for (var i = 0; i < s.AutoCast.Rows.Count; i++)
             {
-                _autoCast.Toggle(index);
-                _refreshAutoCast?.Invoke();
-            });
+                var index = i;
+                Reg("ac:" + index, s.AutoCast.Rows[index].ToggleHotkey, () =>
+                {
+                    _autoCast.Toggle(index);
+                    _refreshAutoCast?.Invoke();
+                });
+            }
         }
 
         Reg("speedboost.toggle", s.SpeedBoost.ToggleHotkey, () =>
@@ -703,27 +972,84 @@ internal sealed partial class MainForm : Form
                 _refreshSpeedBoost?.Invoke();
             });
         });
+
+        if (failed.Count > 0)
+            SetStatusMessage(_loc.Tf("hotkey.registerFail", string.Join(", ", failed)), 6000);
     }
 
     private void RelocalizeNav()
     {
         foreach (var (id, key) in NavItems)
-            if (_navButtons.TryGetValue(id, out var btn))
-                btn.Text = _loc.T(key);
+        {
+            if (!_navButtons.TryGetValue(id, out var btn)) continue;
+            btn.Text = _loc.T(key);
+            if (MutedNavIds.Contains(id))
+                _toolTips.SetToolTip(btn, _loc.T("wip.tooltip"));
+        }
+
+        foreach (Control c in _navRail.Controls)
+        {
+            if (c is not FlowLayoutPanel flp) continue;
+            foreach (Control child in flp.Controls)
+            {
+                if (child is NavSectionHeader { Tag: string groupKey } header)
+                    header.Title = _loc.T(groupKey);
+            }
+        }
+
+        RelocalizeTray();
     }
 
     private void RebuildUi(string? stayOn = null)
     {
         var current = stayOn ?? _activePage;
+        if (MutedNavIds.Contains(current))
+            current = "play";
         _refreshAllLabels = null;
+        _refreshBindingMap = null;
         _refreshInventory = null;
         _refreshGearSwap = null;
         _refreshExtraSkill = null;
         _refreshTeleport = null;
         _refreshAutoCast = null;
         _refreshSpeedBoost = null;
+        _refreshChecklist = null;
         BuildPages();
         RelocalizeNav();
         ShowPage(current);
+        RefreshStatusBar();
+    }
+
+    private void MaybeShowFirstRunWizard()
+    {
+        var s = _settings.Current;
+        if (s.FirstRunWizardDone) return;
+        if (s.Inventory.FirstCell != null)
+        {
+            s.FirstRunWizardDone = true;
+            _settings.Save();
+            return;
+        }
+
+        using var wizard = new FirstRunWizardForm(_loc, _settings, PickCoordForWizard, () =>
+        {
+            UpdateGridOverlay();
+            Persist(immediate: true);
+        });
+        wizard.ShowDialog(this);
+        s.FirstRunWizardDone = true;
+        _settings.Save();
+        RebuildUi("inventory");
+    }
+
+    private ScreenPoint? PickCoordForWizard(int size, bool useOrigin)
+    {
+        using var overlay = new OverlayForm(size, rectangle: true, hintText: _loc.T("overlay.hint"));
+        Hide();
+        overlay.ShowDialog();
+        Show();
+        if (overlay.Result == null) return null;
+        var p = useOrigin && overlay.Origin != null ? overlay.Origin.Value : overlay.Result.Value;
+        return new ScreenPoint(p.X, p.Y);
     }
 }

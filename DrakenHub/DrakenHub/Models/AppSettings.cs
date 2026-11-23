@@ -6,6 +6,8 @@ public sealed class AppSettings
 {
     public string Language { get; set; } = "ru";
     public string ResolutionPreset { get; set; } = "Auto / Custom";
+    /// <summary>True after first-run wizard is finished or skipped.</summary>
+    public bool FirstRunWizardDone { get; set; }
     public int WindowWidth { get; set; } = 980;
     public int WindowHeight { get; set; } = 720;
     public int WindowX { get; set; } = 100;

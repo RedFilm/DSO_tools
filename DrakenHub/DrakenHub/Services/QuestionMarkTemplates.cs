@@ -77,6 +77,37 @@ internal static class QuestionMarkTemplates
 
     public static bool HasTemplate(string rarityId) => Find(rarityId) != null;
 
+    /// <summary>Paints the built-in "?" stroke into a small UI preview tile.</summary>
+    public static void DrawPreview(Graphics g, Rectangle bounds, Color color, bool available = true)
+    {
+        g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.None;
+        var bg = Color.FromArgb(22, 24, 28);
+        using (var fill = new SolidBrush(bg))
+            g.FillRectangle(fill, bounds);
+        using (var border = new Pen(Color.FromArgb(52, 56, 64)))
+            g.DrawRectangle(border, bounds.X, bounds.Y, bounds.Width - 1, bounds.Height - 1);
+
+        if (!available || bounds.Width < 8 || bounds.Height < 8)
+            return;
+
+        const int minX = -22, maxX = 14, minY = -22, maxY = 40;
+        var pad = 3f;
+        var scale = Math.Min(
+            (bounds.Width - pad * 2) / (maxX - minX),
+            (bounds.Height - pad * 2) / (maxY - minY));
+        var ox = bounds.X + bounds.Width / 2f - (minX + maxX) / 2f * scale;
+        var oy = bounds.Y + bounds.Height / 2f - (minY + maxY) / 2f * scale;
+        var ink = available ? color : Color.FromArgb(90, color);
+        var dot = Math.Max(1, (int)Math.Round(scale * 1.6));
+        using var brush = new SolidBrush(ink);
+        foreach (var p in ShapeOffsets)
+        {
+            var x = (int)Math.Round(ox + p.X * scale);
+            var y = (int)Math.Round(oy + p.Y * scale);
+            g.FillRectangle(brush, x, y, dot, dot);
+        }
+    }
+
     // --- Color predicates tuned from unidentified "?" screenshots ---
 
     private static bool MatchesUncommon(Color c)

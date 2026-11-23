@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
 using DrakenHub.Core;
@@ -17,6 +18,11 @@ internal sealed class OverlayForm : Form
     private bool _cancelled;
     private Bitmap? _screen;
     private Rectangle _virtualScreen;
+    private readonly string? _hintText;
+
+    /// <summary>Optional hint shown in the top banner; defaults when null.</summary>
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+    public string? HintText { get; set; }
 
     /// <summary>Cursor position at click (screen coords).</summary>
     public Point? Result { get; private set; }
@@ -24,10 +30,12 @@ internal sealed class OverlayForm : Form
     /// <summary>Top-left of the picker rectangle (screen coords). Same as Result for crosshair.</summary>
     public Point? Origin { get; private set; }
 
-    public OverlayForm(int size, bool rectangle = false)
+    public OverlayForm(int size, bool rectangle = false, string? hintText = null)
     {
         _size = Math.Max(8, size);
         _rectangle = rectangle;
+        _hintText = hintText;
+        HintText = hintText;
         FormBorderStyle = FormBorderStyle.None;
         ShowInTaskbar = false;
         TopMost = true;
@@ -96,6 +104,27 @@ internal sealed class OverlayForm : Form
         }
 
         DrawLoupe(g, local);
+        DrawHintBanner(g);
+    }
+
+    private void DrawHintBanner(Graphics g)
+    {
+        var text = HintText ?? _hintText ?? "Click to save · Esc cancel";
+        using var font = new Font("Segoe UI", 11f, FontStyle.Bold);
+        var textSize = g.MeasureString(text, font);
+        var padH = 18;
+        var padV = 8;
+        var bannerW = (int)Math.Ceiling(textSize.Width) + padH * 2;
+        var bannerH = (int)Math.Ceiling(textSize.Height) + padV * 2;
+        var banner = new Rectangle(
+            (ClientSize.Width - bannerW) / 2,
+            12,
+            bannerW,
+            bannerH);
+        using (var bg = new SolidBrush(Color.FromArgb(185, 16, 18, 22)))
+            g.FillRectangle(bg, banner);
+        using var textBrush = new SolidBrush(Color.White);
+        g.DrawString(text, font, textBrush, banner.X + padH, banner.Y + padV);
     }
 
     private void DrawLoupe(Graphics g, Point local)
