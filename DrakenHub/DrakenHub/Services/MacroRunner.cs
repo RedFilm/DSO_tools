@@ -147,18 +147,20 @@ internal sealed class MacroRunner
 
             var swapDelay = fm.MountSwapDelayMs > 0 ? Math.Clamp(fm.MountSwapDelayMs, 10, 5000) : 80;
 
+            var capeDelay = Math.Max(delay, 40);
+
             // 1) Open inventory, switch to cape tab, equip mount cape
             Press(invKey);
             await Delay(delay * 2, token);
             await SwitchCapeTab(fm, inv, delay, token);
-            await ClickCape(fm, inv, delay, token);
+            await ClickCape(fm, inv, capeDelay, token);
 
             // 2) Summon mount, then wait before swapping cape back
             Press(fm.MountHotkey);
             await Delay(swapDelay, token);
 
             // 3) Equip original cape back, then close inventory
-            await ClickCape(fm, inv, delay, token);
+            await ClickCape(fm, inv, capeDelay, token);
             Press(invKey);
         });
     }
@@ -170,22 +172,41 @@ internal sealed class MacroRunner
             var s = _settings.Current;
             var fm = s.FastMount;
             var inv = s.Inventory;
+            var invKey = inv.InventoryHotkey ?? s.GearSwap.InventoryHotkey;
             var delay = Math.Max(10, fm.ClickDelayMs);
+            // After jump: cape + mount as tight as possible.
+            var fast = Math.Max(1, Math.Min(delay, 10));
+            var swapDelay = fm.MountSwapDelayMs > 0 ? Math.Clamp(fm.MountSwapDelayMs, 10, 5000) : 80;
+            var capeTab = Math.Clamp(fm.CapeTab, 1, 9);
+            var mountTab = Math.Clamp(fm.MountTab, 1, 9);
+
+            // 1) Jump first
             if (!string.IsNullOrEmpty(fm.JumpTargetPanelHotkey))
             {
                 Press(fm.JumpTargetPanelHotkey);
-                await Delay(delay, token);
+                await Delay(fast, token);
             }
             Press(fm.JumpSkillHotkey);
-            await Delay(delay, token);
-            Press(fm.MountHotkey);
-            await Delay(delay, token);
-            Press(fm.MainPanelHotkey);
-            await Delay(delay, token);
-            Press(inv.InventoryHotkey);
-            await Delay(delay * 2, token);
-            await SwitchCapeTab(fm, inv, delay, token);
-            await ClickCape(fm, inv, delay, token);
+
+            // 2) Open inventory → equip cape → RMB mount (minimal gaps)
+            Press(invKey);
+            await Delay(fast, token);
+            await SwitchCapeTab(fm, inv, fast, token);
+            await ClickCape(fm, inv, fast, token);
+
+            if (mountTab != capeTab)
+            {
+                ClickTab(inv, mountTab - 1);
+                await Delay(fast, token);
+            }
+            ClickMount(fm, inv);
+
+            // 3) Restore original cape, close inventory
+            await Delay(swapDelay, token);
+            if (mountTab != capeTab)
+                await SwitchCapeTab(fm, inv, fast, token);
+            await ClickCape(fm, inv, fast, token);
+            Press(invKey);
         });
     }
 
@@ -385,7 +406,16 @@ internal sealed class MacroRunner
         if (center == null) return;
         // Double LMB equips the cape on the character.
         _input.DoubleClick(center.Value.X, center.Value.Y, settleMs: 2);
-        await Delay(Math.Max(delay, 40), token);
+        await Delay(Math.Max(1, delay), token);
+    }
+
+    private void ClickMount(FastMountSettings fm, InventorySettings inv)
+    {
+        if (fm.MountCell == null) return;
+        var center = InventoryLayout.CellCenter(inv, fm.MountCell.Row - 1, fm.MountCell.Col - 1);
+        if (center == null) return;
+        // RMB on mount in inventory summons it (right after jump).
+        _input.RightClick(center.Value.X, center.Value.Y, settleMs: 2);
     }
 
     private void Press(string? keyName)

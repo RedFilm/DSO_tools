@@ -148,6 +148,10 @@ public sealed class FastMountSettings
     public string? JumpTargetPanelHotkey { get; set; }
     public string? JumpSkillHotkey { get; set; }
     public string? JumpMountHotkey { get; set; }
+    /// <summary>Inventory cell with the mount used by Jump Mount (RMB).</summary>
+    public CellRef? MountCell { get; set; }
+    /// <summary>Inventory tab (1-based) where <see cref="MountCell"/> lives.</summary>
+    public int MountTab { get; set; } = 1;
 }
 
 public sealed class CellRef

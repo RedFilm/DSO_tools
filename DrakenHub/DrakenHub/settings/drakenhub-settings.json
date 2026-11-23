@@ -405,7 +405,9 @@
     "mainPanelHotkey": "F1",
     "jumpTargetPanelHotkey": null,
     "jumpSkillHotkey": null,
-    "jumpMountHotkey": null
+    "jumpMountHotkey": null,
+    "mountCell": null,
+    "mountTab": 1
   },
   "gearSwap": {
     "inventoryHotkey": "I",

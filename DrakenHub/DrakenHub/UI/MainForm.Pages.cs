@@ -606,19 +606,34 @@ internal sealed partial class MainForm
         _refreshAllLabels += () => settingsTitle.Text = _loc.T("section.settings");
 
         var jump = UiFactory.VStack();
-        var main = UiFactory.Btn("", BtnKind.Accent);
-        BindUtilityKeyButton(main, () => fm.MainPanelHotkey, SetMainPanelHotkey, "mainPanel");
+        var mountCell = UiFactory.Btn("", BtnKind.Warn);
+        BindCellButton(mountCell, () => fm.MountCell, v => fm.MountCell = v, "mountCell");
         var target = UiFactory.Btn("", BtnKind.Accent);
         BindUtilityKeyButton(target, () => fm.JumpTargetPanelHotkey, v => fm.JumpTargetPanelHotkey = v, "targetPanel");
         var skill = UiFactory.Btn("", BtnKind.Accent);
         BindUtilityKeyButton(skill, () => fm.JumpSkillHotkey, v => fm.JumpSkillHotkey = v, "skillSlot");
         var jumpKey = UiFactory.Btn("", BtnKind.Primary);
         BindLaunchButton(jumpKey, () => fm.JumpMountHotkey, v => fm.JumpMountHotkey = v, "jumpmount", "jumpmount");
-        jump.Controls.Add(UiFactory.EqualRow(main, target, skill));
+        jump.Controls.Add(UiFactory.EqualRow(mountCell, target, skill));
         jump.Controls.Add(UiFactory.EqualRow(jumpKey));
+
+        var mountTab = UiFactory.Combo(Enumerable.Range(1, 9).Select(i => i.ToString()).ToArray());
+        mountTab.SelectedIndex = Math.Clamp(fm.MountTab - 1, 0, 8);
+        mountTab.SelectedIndexChanged += (_, _) =>
+        {
+            fm.MountTab = mountTab.SelectedIndex + 1;
+            Persist();
+        };
+        var mountTabLabel = UiFactory.Lbl(_loc.T("mountTab"));
+        jump.Controls.Add(UiFactory.FieldRow(mountTabLabel, mountTab, 90));
+
         var jumpSec = UiFactory.Section(_loc.T("section.jump"), jump, out var jumpTitle);
         UiFactory.Add(stack, jumpSec);
-        _refreshAllLabels += () => jumpTitle.Text = _loc.T("section.jump");
+        _refreshAllLabels += () =>
+        {
+            jumpTitle.Text = _loc.T("section.jump");
+            mountTabLabel.Text = _loc.T("mountTab");
+        };
         return scroll;
     }
 

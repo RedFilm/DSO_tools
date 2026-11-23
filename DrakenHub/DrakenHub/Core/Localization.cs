@@ -72,6 +72,8 @@ internal sealed class Localization
         ["targetPanel"] = ("Целевая панель", "Target panel"),
         ["skillSlot"] = ("Слот навыка", "Skill slot"),
         ["jumpmount"] = ("Jump Mount", "Jump Mount"),
+        ["mountCell"] = ("Ячейка маунта", "Mount cell"),
+        ["mountTab"] = ("Вкладка маунта", "Mount tab"),
         ["add.gearswap"] = ("Добавить Gear Swap", "Add Gear Swap"),
         ["add.extraskill"] = ("Добавить Extra Skill", "Add Extra Skill"),
         ["add.location"] = ("Добавить локацию", "Add location"),
