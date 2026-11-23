@@ -252,12 +252,14 @@ internal sealed class ColorScanService(InputService input)
         foreach (var item in inv.OtherItems.Where(x => x.Enabled))
             Accrue(item.Points);
 
-        var gridW = InventoryLayout.Columns * g.CellSize + Math.Max(0, InventoryLayout.Columns - 1) * g.GapX;
-        var gridH = InventoryLayout.Rows * g.CellSize + Math.Max(0, InventoryLayout.Rows - 1) * g.GapY;
-        var left = inv.FirstCell.X + Math.Min(0, minOx) - 2;
-        var top = inv.FirstCell.Y + Math.Min(0, minOy) - 2;
-        var width = Math.Max(1, gridW + Math.Max(0, maxOx) - Math.Min(0, minOx) + 4);
-        var height = Math.Max(1, gridH + Math.Max(0, maxOy) - Math.Min(0, minOy) + 4);
+        var x0 = InventoryLayout.CellOffset(0, g.CellSize, g.GapX);
+        var y0 = InventoryLayout.CellOffset(0, g.CellSize, g.GapY);
+        var farX = InventoryLayout.CellOffset(InventoryLayout.Columns - 1, g.CellSize, g.GapX) + g.CellSize;
+        var farY = InventoryLayout.CellOffset(InventoryLayout.Rows - 1, g.CellSize, g.GapY) + g.CellSize;
+        var left = inv.FirstCell.X + Math.Min(x0, minOx) - 2;
+        var top = inv.FirstCell.Y + Math.Min(y0, minOy) - 2;
+        var width = Math.Max(1, farX - Math.Min(x0, minOx) + Math.Max(0, maxOx) + 4);
+        var height = Math.Max(1, farY - Math.Min(y0, minOy) + Math.Max(0, maxOy) + 4);
         var bounds = new Rectangle(left, top, width, height);
 
         var bmp = new Bitmap(width, height, PixelFormat.Format32bppArgb);

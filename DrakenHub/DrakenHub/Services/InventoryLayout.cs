@@ -7,22 +7,39 @@ internal static class InventoryLayout
     public const int Columns = 7;
     public const int Rows = 4;
 
+    // At cell size 105 the slots step 107, then 108. The saved gap keeps only the
+    // whole pixels, and the anchor was taken on the inner rim, 5px down-right of
+    // the slot center. Both are put back here so the first cells share the lattice.
+    private const double SlotPitch = 107.5;
+    private const double SlotCell = 105.0;
+    private const double AnchorBias = 5.0;
+
+    public static int CellOffset(int index, int cell, int gap) => Span(index, cell, gap);
+
     public static Point? CellCenter(InventorySettings inv, int row, int col)
     {
-        if (inv.FirstCell == null) return null;
+        var origin = CellOrigin(inv, row, col);
+        if (origin == null) return null;
         var g = inv.Grid;
-        var x = inv.FirstCell.X + col * (g.CellSize + g.GapX) + g.CellSize / 2;
-        var y = inv.FirstCell.Y + row * (g.CellSize + g.GapY) + g.CellSize / 2;
-        return new Point(x, y);
+        return new Point(origin.Value.X + g.CellSize / 2, origin.Value.Y + g.CellSize / 2);
     }
 
     public static Point? CellOrigin(InventorySettings inv, int row, int col)
     {
         if (inv.FirstCell == null) return null;
         var g = inv.Grid;
-        var x = inv.FirstCell.X + col * (g.CellSize + g.GapX);
-        var y = inv.FirstCell.Y + row * (g.CellSize + g.GapY);
+        var x = inv.FirstCell.X + Span(col, g.CellSize, g.GapX);
+        var y = inv.FirstCell.Y + Span(row, g.CellSize, g.GapY);
         return new Point(x, y);
+    }
+
+    private static int Span(int index, int cell, int gap)
+    {
+        if (gap > Math.Max(2, cell / 30))
+            return index * (cell + gap);
+
+        var scale = cell / SlotCell;
+        return (int)Math.Round(index * SlotPitch * scale - AnchorBias * scale, MidpointRounding.AwayFromZero);
     }
 
     public static Point? TabCenter(InventorySettings inv, int tabIndexZeroBased)
@@ -40,8 +57,8 @@ internal static class InventoryLayout
         for (var row = 0; row < Rows; row++)
         for (var col = 0; col < Columns; col++)
         {
-            var ox = inv.FirstCell.X + col * (g.CellSize + g.GapX);
-            var oy = inv.FirstCell.Y + row * (g.CellSize + g.GapY);
+            var ox = inv.FirstCell.X + Span(col, g.CellSize, g.GapX);
+            var oy = inv.FirstCell.Y + Span(row, g.CellSize, g.GapY);
             if (screen.X >= ox && screen.X < ox + g.CellSize &&
                 screen.Y >= oy && screen.Y < oy + g.CellSize)
                 return new CellRef { Row = row + 1, Col = col + 1 };
@@ -57,12 +74,16 @@ internal static class InventoryLayout
         if (inv.FirstCell != null)
         {
             var g = inv.Grid;
+            // A couple of pixels so neighbouring strokes don't fuse. The border itself stays put.
+            var inset = Math.Max(2, g.CellSize / 28);
+            var drawW = Math.Max(8, g.CellSize - inset * 2);
+            var drawH = drawW;
             for (var row = 0; row < Rows; row++)
             for (var col = 0; col < Columns; col++)
             {
-                var ox = inv.FirstCell.X + col * (g.CellSize + g.GapX);
-                var oy = inv.FirstCell.Y + row * (g.CellSize + g.GapY);
-                cells.Add(new Rectangle(ox, oy, g.CellSize, g.CellSize));
+                var ox = inv.FirstCell.X + Span(col, g.CellSize, g.GapX) + inset;
+                var oy = inv.FirstCell.Y + Span(row, g.CellSize, g.GapY) + inset;
+                cells.Add(new Rectangle(ox, oy, drawW, drawH));
             }
         }
 

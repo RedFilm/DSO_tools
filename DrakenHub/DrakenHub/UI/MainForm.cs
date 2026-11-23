@@ -796,13 +796,26 @@ internal sealed partial class MainForm : Form
         var inv = _settings.Current.Inventory;
         if (inv.FirstCell == null)
             return new CellRef { Row = 1, Col = 1 };
-        var g = inv.Grid;
-        var col = Math.Max(0, (screen.X - inv.FirstCell.X) / Math.Max(1, g.CellSize + g.GapX));
-        var row = Math.Max(0, (screen.Y - inv.FirstCell.Y) / Math.Max(1, g.CellSize + g.GapY));
+        var bestCol = 0;
+        var bestRow = 0;
+        var best = int.MaxValue;
+        for (var row = 0; row < InventoryLayout.Rows; row++)
+        for (var col = 0; col < InventoryLayout.Columns; col++)
+        {
+            var origin = InventoryLayout.CellOrigin(inv, row, col);
+            if (origin == null) continue;
+            var dx = screen.X - (origin.Value.X + inv.Grid.CellSize / 2);
+            var dy = screen.Y - (origin.Value.Y + inv.Grid.CellSize / 2);
+            var d = dx * dx + dy * dy;
+            if (d >= best) continue;
+            best = d;
+            bestCol = col;
+            bestRow = row;
+        }
         return new CellRef
         {
-            Row = Math.Clamp(row + 1, 1, InventoryLayout.Rows),
-            Col = Math.Clamp(col + 1, 1, InventoryLayout.Columns)
+            Row = bestRow + 1,
+            Col = bestCol + 1
         };
     }
 
