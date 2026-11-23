@@ -156,6 +156,61 @@ internal sealed partial class MainForm
         return false;
     }
 
+    /// <summary>
+    /// Inventory is open after a grid match. Close it, open the skills window, click «Знания», then match the bag.
+    /// The bag is not on the other tabs. The skills key toggles, so one miss is retried.
+    /// </summary>
+    private bool TryPrepareSkills(InventorySettings inv, out InventoryCalibrator.Hit wisdom, out InventoryCalibrator.Hit shop)
+    {
+        wisdom = default;
+        shop = default;
+        var key = KeyNames.Parse(inv.SkillsWindowHotkey);
+        if (key == Keys.None)
+        {
+            MessageBox.Show(_loc.T("calib.noSkillsKey"), _loc.T("notify"), MessageBoxButtons.OK, MessageBoxIcon.Information);
+            return false;
+        }
+
+        var invKey = KeyNames.Parse(inv.InventoryHotkey);
+        if (invKey != Keys.None)
+        {
+            _input.KeyPress(invKey);
+            Thread.Sleep(280);
+        }
+
+        var opened = false;
+        for (var attempt = 0; attempt < 2; attempt++)
+        {
+            _input.KeyPress(key);
+            Thread.Sleep(520);
+            if (InventoryCalibrator.TryMatchWisdom(out wisdom))
+            {
+                opened = true;
+                break;
+            }
+        }
+
+        if (!opened)
+        {
+            MessageBox.Show(_loc.T("calib.skillsFail"), _loc.T("notify"), MessageBoxButtons.OK, MessageBoxIcon.Information);
+            return false;
+        }
+
+        var tab = InventoryCalibrator.WisdomClick(wisdom);
+        _input.LeftClick(tab.X, tab.Y, settleMs: 2);
+        Thread.Sleep(450);
+        if (InventoryCalibrator.TryMatchSkills(out shop))
+            return true;
+
+        _input.LeftClick(tab.X, tab.Y, settleMs: 2);
+        Thread.Sleep(450);
+        if (InventoryCalibrator.TryMatchSkills(out shop))
+            return true;
+
+        MessageBox.Show(_loc.T("calib.skillsFail"), _loc.T("notify"), MessageBoxButtons.OK, MessageBoxIcon.Information);
+        return false;
+    }
+
     private Control BuildSellCalibrationSection(InventorySettings inv)
     {
         var calib = UiFactory.VStack();
@@ -192,11 +247,17 @@ internal sealed partial class MainForm
                     return;
 
                 InventoryCalibrator.Apply(inv, hit);
+                var skillsOk = TryPrepareSkills(inv, out var wisdomHit, out var shopHit);
+                if (skillsOk)
+                {
+                    InventoryCalibrator.ApplyWisdom(inv, wisdomHit);
+                    InventoryCalibrator.ApplyShop(inv, shopHit);
+                }
                 _suppressUiEvents = true;
                 try { _refreshAllLabels?.Invoke(); }
                 finally { _suppressUiEvents = false; }
                 Persist(immediate: true, hotkeys: false, grid: true);
-                SetStatusMessage(_loc.T("calib.ok"));
+                SetStatusMessage(_loc.T(skillsOk ? "calib.ok" : "calib.okGrid"));
                 gridWasVisible = false;
             }
             finally

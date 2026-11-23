@@ -15,6 +15,8 @@
   <ItemGroup>
     <None Include="SpeedBoostEngine\**\*" CopyToOutputDirectory="PreserveNewest" />
     <EmbeddedResource Include="Assets\InventoryTabStrip.png" />
+    <EmbeddedResource Include="Assets\SkillsShopButtons.png" />
+    <EmbeddedResource Include="Assets\SkillsBanner.png" />
   </ItemGroup>
 
 </Project>

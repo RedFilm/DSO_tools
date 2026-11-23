@@ -28,13 +28,25 @@ internal static class InventoryCalibrator
     private const int CloseX = 785;
     private const int CloseY = -602;
 
+    // Skills window, scale 1. The banner (arrow + diamonds, no text) is on every tab.
+    // "Знания" is the second tab under that banner. The bag appears only after that click.
+    // Center of the banner's gold blob, relative to the template's top-left.
+    private const int BannerAnchorX = 639;
+    private const int BannerAnchorY = 18;
+    private const int WisdomX = 274;
+    private const int WisdomY = 111;
+    private const int ShopX = 241;
+    private const int ShopY = 62;
+
     private const double AcceptScore = 0.78;
 
     public readonly record struct Hit(int OriginX, int OriginY, double Scale, double Score);
 
     private readonly record struct Sample(short X, short Y, byte G);
 
-    private static readonly Lazy<(Sample[] Coarse, Sample[] Fine)> Samples = new(LoadSamples);
+    private static readonly Lazy<(Sample[] Coarse, Sample[] Fine)> Samples = new(() => LoadSamples("InventoryTabStrip.png"));
+    private static readonly Lazy<(Sample[] Coarse, Sample[] Fine)> SkillSamples = new(() => LoadSamples("SkillsShopButtons.png"));
+    private static readonly Lazy<(Sample[] Coarse, Sample[] Fine)> BannerSamples = new(() => LoadSamples("SkillsBanner.png"));
 
     public static bool TryMatch(out Hit hit)
     {
@@ -43,40 +55,8 @@ internal static class InventoryCalibrator
         {
             using var grab = Capture();
             if (grab == null) return false;
-
             var (coarse, fine) = Samples.Value;
-            var blobs = FindRedBlobs(grab);
-            if (blobs.Count == 0) return false;
-
-            var best = new Hit(0, 0, 1, -1);
-            foreach (var blob in blobs)
-            {
-                for (var scale = 0.60; scale <= 1.80; scale += 0.04)
-                {
-                    var ox = (int)Math.Round(blob.Cx - SortAnchorX * scale);
-                    var oy = (int)Math.Round(blob.Cy - SortAnchorY * scale);
-                    for (var jy = -24; jy <= 24; jy += 4)
-                    for (var jx = -24; jx <= 24; jx += 4)
-                    {
-                        var score = Correlate(grab, coarse, ox + jx, oy + jy, scale, step: 4);
-                        if (score > best.Score)
-                            best = new Hit(ox + jx, oy + jy, scale, score);
-                    }
-                }
-            }
-
-            if (best.Score < 0.35) return false;
-
-            best = Refine(grab, fine, best, scaleWindow: 0.03, scaleStep: 0.01, pixelWindow: 12, pixelStep: 2);
-            best = Refine(grab, fine, best, scaleWindow: 0.012, scaleStep: 0.004, pixelWindow: 3, pixelStep: 1);
-            if (best.Score < AcceptScore) return false;
-
-            hit = new Hit(
-                best.OriginX + grab.ScreenX,
-                best.OriginY + grab.ScreenY,
-                best.Scale,
-                best.Score);
-            return true;
+            return Search(grab, coarse, fine, FindRedBlobs(grab), SortAnchorX, SortAnchorY, out hit);
         }
         catch
         {
@@ -100,6 +80,92 @@ internal static class InventoryCalibrator
         inv.Grid.TabOffsetX = Math.Max(10, (int)Math.Round(TabOffsetX * s));
         inv.Grid.TabMarkerSize = Math.Clamp((int)Math.Round(TabMarker * s), 8, 96);
         inv.Grid.ShowGrid = true;
+    }
+
+    /// <summary>
+    /// Finds the skills window by the title banner, which stays put on every tab.
+    /// </summary>
+    public static bool TryMatchWisdom(out Hit hit)
+    {
+        hit = default;
+        try
+        {
+            using var grab = Capture();
+            if (grab == null) return false;
+            var (coarse, fine) = BannerSamples.Value;
+            return Search(grab, coarse, fine, FindArrowBlobs(grab), BannerAnchorX, BannerAnchorY, out hit);
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    public static Point WisdomClick(Hit hit) => new(At(hit.OriginX, WisdomX, hit.Scale), At(hit.OriginY, WisdomY, hit.Scale));
+
+    /// <summary>Finds the hammer and bag. They are only on the knowledge tab.</summary>
+    public static bool TryMatchSkills(out Hit hit)
+    {
+        hit = default;
+        try
+        {
+            using var grab = Capture();
+            if (grab == null) return false;
+            var (coarse, fine) = SkillSamples.Value;
+            return Search(grab, coarse, fine, FindBagBlobs(grab), ShopX, ShopY, out hit);
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    public static void ApplyWisdom(InventorySettings inv, Hit hit)
+    {
+        var p = WisdomClick(hit);
+        inv.WisdomTab = new ScreenPoint(p.X, p.Y);
+    }
+
+    public static void ApplyShop(InventorySettings inv, Hit hit)
+    {
+        var s = hit.Scale;
+        inv.ShopButton = new ScreenPoint(At(hit.OriginX, ShopX, s), At(hit.OriginY, ShopY, s));
+    }
+
+    private static bool Search(Grab grab, Sample[] coarse, Sample[] fine, List<RedBlob> blobs, int anchorX, int anchorY, out Hit hit)
+    {
+        hit = default;
+        if (blobs.Count == 0) return false;
+
+        var best = new Hit(0, 0, 1, -1);
+        foreach (var blob in blobs)
+        {
+            for (var scale = 0.60; scale <= 1.80; scale += 0.04)
+            {
+                var ox = (int)Math.Round(blob.Cx - anchorX * scale);
+                var oy = (int)Math.Round(blob.Cy - anchorY * scale);
+                for (var jy = -24; jy <= 24; jy += 4)
+                for (var jx = -24; jx <= 24; jx += 4)
+                {
+                    var score = Correlate(grab, coarse, ox + jx, oy + jy, scale, step: 4);
+                    if (score > best.Score)
+                        best = new Hit(ox + jx, oy + jy, scale, score);
+                }
+            }
+        }
+
+        if (best.Score < 0.35) return false;
+
+        best = Refine(grab, fine, best, scaleWindow: 0.03, scaleStep: 0.01, pixelWindow: 12, pixelStep: 2);
+        best = Refine(grab, fine, best, scaleWindow: 0.012, scaleStep: 0.004, pixelWindow: 3, pixelStep: 1);
+        if (best.Score < AcceptScore) return false;
+
+        hit = new Hit(
+            best.OriginX + grab.ScreenX,
+            best.OriginY + grab.ScreenY,
+            best.Scale,
+            best.Score);
+        return true;
     }
 
     private static int At(int origin, int offset, double scale) => origin + (int)Math.Round(offset * scale);
@@ -203,11 +269,106 @@ internal static class InventoryCalibrator
         return aspect <= 2.6;
     }
 
-    private static (Sample[] Coarse, Sample[] Fine) LoadSamples()
+    private static List<RedBlob> FindArrowBlobs(Grab grab)
+    {
+        var blobs = new List<RedBlob>();
+        var buf = grab.Pixels;
+        var stride = grab.Stride;
+        for (var y = 0; y < grab.Height; y += 2)
+        {
+            var row = y * stride;
+            for (var x = 0; x < grab.Width; x += 2)
+            {
+                var i = row + x * 4;
+                var b = buf[i];
+                var g = buf[i + 1];
+                var r = buf[i + 2];
+                if (r <= 200 || g <= 150 || g >= 220 || b <= 60 || b >= 160 || r <= g || g <= b) continue;
+
+                RedBlob? hit = null;
+                foreach (var blob in blobs)
+                {
+                    if (x < blob.X0 - 30 || x > blob.X1 + 30 || y < blob.Y0 - 24 || y > blob.Y1 + 24) continue;
+                    hit = blob;
+                    break;
+                }
+
+                if (hit == null)
+                {
+                    blobs.Add(new RedBlob { X0 = x, Y0 = y, X1 = x, Y1 = y, Count = 1 });
+                    continue;
+                }
+
+                if (x < hit.X0) hit.X0 = x;
+                if (y < hit.Y0) hit.Y0 = y;
+                if (x > hit.X1) hit.X1 = x;
+                if (y > hit.Y1) hit.Y1 = y;
+                hit.Count++;
+            }
+        }
+
+        return blobs.Where(blob =>
+        {
+            if (blob.Count < 200) return false;
+            var w = blob.X1 - blob.X0;
+            var h = blob.Y1 - blob.Y0;
+            return w >= 500 && h >= 40 && w <= 1500 && h <= 140;
+        }).ToList();
+    }
+
+    private static List<RedBlob> FindBagBlobs(Grab grab)
+    {
+        var blobs = new List<RedBlob>();
+        var buf = grab.Pixels;
+        var stride = grab.Stride;
+        for (var y = 0; y < grab.Height; y += 2)
+        {
+            var row = y * stride;
+            for (var x = 0; x < grab.Width; x += 2)
+            {
+                var i = row + x * 4;
+                var b = buf[i];
+                var g = buf[i + 1];
+                var r = buf[i + 2];
+                // Warm cream of the bag. The hammer is whiter, so its blue stays high.
+                if (r <= 220 || g <= 175 || g >= 235 || b <= 130 || b >= 195 || r <= g || g <= b) continue;
+
+                RedBlob? hit = null;
+                foreach (var blob in blobs)
+                {
+                    if (x < blob.X0 - 16 || x > blob.X1 + 16 || y < blob.Y0 - 16 || y > blob.Y1 + 16) continue;
+                    hit = blob;
+                    break;
+                }
+
+                if (hit == null)
+                {
+                    blobs.Add(new RedBlob { X0 = x, Y0 = y, X1 = x, Y1 = y, Count = 1 });
+                    continue;
+                }
+
+                if (x < hit.X0) hit.X0 = x;
+                if (y < hit.Y0) hit.Y0 = y;
+                if (x > hit.X1) hit.X1 = x;
+                if (y > hit.Y1) hit.Y1 = y;
+                hit.Count++;
+            }
+        }
+
+        return blobs.Where(blob =>
+        {
+            if (blob.Count < 20) return false;
+            var w = blob.X1 - blob.X0;
+            var h = blob.Y1 - blob.Y0;
+            return w >= 10 && h >= 10 && w <= 90 && h <= 80;
+        }).ToList();
+    }
+
+    private static (Sample[] Coarse, Sample[] Fine) LoadSamples(string fileName)
     {
         var asm = typeof(InventoryCalibrator).Assembly;
-        var name = asm.GetManifestResourceNames().FirstOrDefault(n => n.EndsWith("InventoryTabStrip.png", StringComparison.Ordinal))
-            ?? throw new InvalidOperationException("Inventory tab template is missing.");
+        var name = asm.GetManifestResourceNames().FirstOrDefault(n => n.EndsWith(fileName, StringComparison.Ordinal))
+            ?? throw new InvalidOperationException("Template is missing: " + fileName);
         using var stream = asm.GetManifestResourceStream(name)!;
         using var raw = new Bitmap(stream);
         using var bmp = new Bitmap(raw.Width, raw.Height, PixelFormat.Format32bppArgb);
