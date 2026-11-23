@@ -17,7 +17,6 @@ internal enum SettingRowKind
 /// </summary>
 internal sealed class SettingRow : Panel
 {
-    private readonly Label _kindBadge;
     private readonly Label _label;
     private readonly Label _value;
     private Control? _trailing;
@@ -45,6 +44,7 @@ internal sealed class SettingRow : Panel
             _value.Text = value;
             _value.ForeColor = ValueDanger ? Theme.Danger
                 : IsEmptyValue(value) ? Theme.TextMuted : Theme.Text;
+            LayoutChildren();
             Invalidate();
         }
     }
@@ -55,33 +55,17 @@ internal sealed class SettingRow : Panel
     {
         Kind = kind;
         Height = 38;
-        Margin = new Padding(0, 0, 0, 5);
+        Margin = new Padding(0, 0, 0, 4);
         Cursor = Cursors.Hand;
         BackColor = Theme.PanelAlt;
         SetStyle(
             ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer |
             ControlStyles.ResizeRedraw | ControlStyles.UserPaint, true);
 
-        _kindBadge = new Label
-        {
-            AutoSize = false,
-            Width = 28,
-            Height = 22,
-            TextAlign = ContentAlignment.MiddleCenter,
-            Font = Theme.UiFontSmall,
-            ForeColor = Theme.Accent,
-            BackColor = Theme.PanelAlt,
-            Text = kind switch
-            {
-                SettingRowKind.Hotkey => "⌨",
-                SettingRowKind.Coord => "⌖",
-                SettingRowKind.Cell => "▣",
-                _ => "•"
-            }
-        };
         _label = new Label
         {
             AutoSize = false,
+            AutoEllipsis = true,
             ForeColor = Theme.Text,
             Font = Theme.UiFont,
             TextAlign = ContentAlignment.MiddleLeft,
@@ -91,6 +75,7 @@ internal sealed class SettingRow : Panel
         _value = new Label
         {
             AutoSize = false,
+            AutoEllipsis = true,
             ForeColor = IsEmptyValue(value) ? Theme.TextMuted : Theme.Text,
             Font = Theme.UiFontValue,
             TextAlign = ContentAlignment.MiddleRight,
@@ -98,10 +83,8 @@ internal sealed class SettingRow : Panel
             Text = value
         };
 
-        Controls.Add(_kindBadge);
         Controls.Add(_label);
         Controls.Add(_value);
-        WireActivate(_kindBadge);
         WireActivate(_label);
         WireActivate(_value);
 
@@ -126,7 +109,6 @@ internal sealed class SettingRow : Panel
         if (_hover == hover) return;
         _hover = hover;
         var fill = Theme.PanelAlt;
-        _kindBadge.BackColor = fill;
         _label.BackColor = fill;
         _value.BackColor = fill;
         if (_trailing != null)
@@ -158,15 +140,16 @@ internal sealed class SettingRow : Panel
 
     private void LayoutChildren()
     {
-        const int badgeX = 10;
-        const int badgeW = 28;
-        var valueW = _trailing != null ? 64 : 156;
+        const int iconSlot = 36;
+        var valueW = Math.Max(72, TextRenderer.MeasureText(_value.Text, _value.Font).Width + 10);
+        if (_trailing != null)
+            valueW = Math.Min(valueW, 72);
         var trail = _trailing != null ? _trailingWidth + 12 : 0;
         var rightEdge = Width - 12 - trail;
+        var labelW = Math.Max(40, rightEdge - valueW - iconSlot - 8);
 
-        _kindBadge.SetBounds(badgeX, 8, badgeW, 22);
-        _value.SetBounds(rightEdge - valueW, 5, valueW, 28);
-        _label.SetBounds(42, 5, Math.Max(40, rightEdge - valueW - 50), 28);
+        _value.SetBounds(rightEdge - valueW, 5, valueW, Height - 10);
+        _label.SetBounds(iconSlot, 5, labelW, Height - 10);
 
         if (_trailing != null)
             _trailing.SetBounds(Width - 10 - _trailingWidth, 5, _trailingWidth, 28);
@@ -179,7 +162,44 @@ internal sealed class SettingRow : Panel
         var border = _hover ? Theme.BorderHover : Theme.Border;
         using var pen = new Pen(border);
         e.Graphics.DrawRectangle(pen, 0, 0, Width - 1, Height - 1);
+        DrawKindIcon(e.Graphics);
         base.OnPaint(e);
+    }
+
+    private void DrawKindIcon(Graphics g)
+    {
+        g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+        var box = new Rectangle(10, (Height - 16) / 2, 16, 16);
+        using var pen = new Pen(Theme.Accent, 1.4f);
+        pen.StartCap = System.Drawing.Drawing2D.LineCap.Round;
+        pen.EndCap = System.Drawing.Drawing2D.LineCap.Round;
+        switch (Kind)
+        {
+            case SettingRowKind.Hotkey:
+                g.DrawRectangle(pen, box.X + 1, box.Y + 3, 14, 10);
+                g.DrawLine(pen, box.X + 4, box.Y + 8, box.X + 7, box.Y + 8);
+                g.DrawLine(pen, box.X + 9, box.Y + 8, box.X + 12, box.Y + 8);
+                g.DrawLine(pen, box.X + 6, box.Y + 11, box.X + 10, box.Y + 11);
+                break;
+            case SettingRowKind.Coord:
+                var c = new Point(box.X + 8, box.Y + 8);
+                g.DrawEllipse(pen, c.X - 4, c.Y - 4, 8, 8);
+                g.DrawLine(pen, c.X, box.Y + 1, c.X, box.Y + 4);
+                g.DrawLine(pen, c.X, box.Y + 12, c.X, box.Y + 15);
+                g.DrawLine(pen, box.X + 1, c.Y, box.X + 4, c.Y);
+                g.DrawLine(pen, box.X + 12, c.Y, box.X + 15, c.Y);
+                break;
+            case SettingRowKind.Cell:
+                g.DrawRectangle(pen, box.X + 1, box.Y + 1, 6, 6);
+                g.DrawRectangle(pen, box.X + 9, box.Y + 1, 6, 6);
+                g.DrawRectangle(pen, box.X + 1, box.Y + 9, 6, 6);
+                g.DrawRectangle(pen, box.X + 9, box.Y + 9, 6, 6);
+                break;
+            default:
+                using (var brush = new SolidBrush(Theme.Accent))
+                    g.FillEllipse(brush, box.X + 5, box.Y + 5, 6, 6);
+                break;
+        }
     }
 
     private static bool IsEmptyValue(string value)

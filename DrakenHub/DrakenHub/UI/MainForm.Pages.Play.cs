@@ -40,7 +40,18 @@ internal sealed partial class MainForm
 
             foreach (var groupKey in groupOrder)
             {
-                var header = UiFactory.Lbl(_loc.T(groupKey), muted: true);
+                var header = new Label
+                {
+                    Text = _loc.T(groupKey),
+                    AutoSize = false,
+                    Height = 26,
+                    ForeColor = Theme.TextSubtle,
+                    Font = Theme.UiFontSmall,
+                    TextAlign = ContentAlignment.BottomLeft,
+                    Padding = new Padding(36, 0, 0, 2),
+                    Margin = new Padding(0, 8, 0, 2),
+                    BackColor = Color.Transparent
+                };
                 _playBindingList.Controls.Add(header);
 
                 foreach (var entry in entries.Where(e => e.GroupKey == groupKey))

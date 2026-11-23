@@ -205,10 +205,10 @@ internal static class UiFactory
     {
         if (panel.Tag is not SectionTag tag) return;
 
+        LayoutSectionHeader(panel, width);
         var innerW = Math.Max(100, width - 24);
         tag.Inner.Left = 12;
-        // Leave room for title; subtitle (if any) sits around y=22.
-        var top = tag.Inner.Top >= 36 ? tag.Inner.Top : 28;
+        var top = Math.Max(28, tag.HeaderBottom);
         tag.Inner.Top = top;
         tag.Inner.Width = innerW;
         LayoutStackChild(tag.Inner, innerW);
@@ -238,10 +238,37 @@ internal static class UiFactory
         return Math.Max(RowH, c.PreferredSize.Height > 0 ? c.PreferredSize.Height : c.Height);
     }
 
+    private static void LayoutSectionHeader(Panel panel, int width)
+    {
+        if (panel.Tag is not SectionTag tag) return;
+        var textW = Math.Max(80, width - 28);
+        var titleH = MeasureWrapped(tag.Title.Text, tag.Title.Font, textW);
+        tag.Title.SetBounds(14, 10, textW, titleH);
+        var y = 10 + titleH + 6;
+        if (tag.Subtitle != null)
+        {
+            var subH = MeasureWrapped(tag.Subtitle.Text, tag.Subtitle.Font, textW);
+            tag.Subtitle.SetBounds(14, y, textW, subH);
+            y += subH + 8;
+        }
+
+        tag.HeaderBottom = y;
+    }
+
+    private static int MeasureWrapped(string text, Font font, int width)
+    {
+        if (string.IsNullOrEmpty(text)) return font.Height;
+        var size = TextRenderer.MeasureText(text, font, new Size(width, int.MaxValue),
+            TextFormatFlags.WordBreak | TextFormatFlags.TextBoxControl | TextFormatFlags.NoPadding);
+        return Math.Max(font.Height, size.Height);
+    }
+
     private sealed class SectionTag
     {
         public required Control Inner { get; init; }
         public required Label Title { get; init; }
+        public Label? Subtitle { get; set; }
+        public int HeaderBottom { get; set; }
     }
 
     /// <summary>Marks a horizontal ActionRow so stack layout does not reflow its children vertically.</summary>
@@ -322,10 +349,18 @@ internal static class UiFactory
         row.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, leftWidth));
         row.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         row.RowStyles.Add(new RowStyle(SizeType.Absolute, RowH + 4));
+        if (left is Label label)
+        {
+            label.AutoSize = false;
+            label.AutoEllipsis = true;
+            label.TextAlign = ContentAlignment.MiddleLeft;
+        }
+        if (right is TextBox box)
+            box.AutoSize = false;
         left.Dock = DockStyle.Fill;
-        left.Margin = new Padding(2);
+        left.Margin = new Padding(2, 4, 8, 4);
         right.Dock = DockStyle.Fill;
-        right.Margin = new Padding(2);
+        right.Margin = new Padding(2, 4, 2, 4);
         if (right is Button b)
         {
             b.Height = RowH;
@@ -362,19 +397,20 @@ internal static class UiFactory
         titleLabel = new Label
         {
             Text = title,
-            AutoSize = true,
-            Location = new Point(14, 8),
-            ForeColor = Theme.TextMuted,
+            AutoSize = false,
+            Location = new Point(14, 10),
+            ForeColor = Theme.Text,
             Font = Theme.UiFontValue,
-            BackColor = Theme.Panel
+            BackColor = Theme.Panel,
+            AutoEllipsis = true
         };
 
-        inner.Location = new Point(12, 28);
+        inner.Location = new Point(12, 36);
         inner.BackColor = Theme.Panel;
         panel.Controls.Add(inner);
         panel.Controls.Add(titleLabel);
         titleLabel.BringToFront();
-        panel.Tag = new SectionTag { Inner = inner, Title = titleLabel };
+        panel.Tag = new SectionTag { Inner = inner, Title = titleLabel, HeaderBottom = 36 };
 
         panel.Paint += (_, e) =>
         {
@@ -478,17 +514,15 @@ internal static class UiFactory
         subtitleLabel = new Label
         {
             Text = subtitle,
-            AutoSize = true,
-            Location = new Point(12, 22),
+            AutoSize = false,
             ForeColor = Theme.TextMuted,
             Font = Theme.UiFontSmall,
             BackColor = Theme.Panel,
-            MaximumSize = new Size(520, 0)
+            AutoEllipsis = false
         };
-        // Push body down for subtitle.
         if (panel.Tag is SectionTag tag)
         {
-            tag.Inner.Top = 40;
+            tag.Subtitle = subtitleLabel;
             panel.Controls.Add(subtitleLabel);
             subtitleLabel.BringToFront();
         }
@@ -518,6 +552,7 @@ internal static class UiFactory
         BorderStyle = BorderStyle.FixedSingle,
         Font = Theme.UiFont,
         Height = 28,
+        AutoSize = false,
         Margin = new Padding(2)
     };
 

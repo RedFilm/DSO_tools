@@ -7,7 +7,7 @@ namespace DrakenHub.UI;
 internal sealed partial class MainForm : Form
 {
     // Flip these when features leave WIP.
-    private static readonly HashSet<string> MutedNavIds = ["gearswap", "autocast"];
+    private static readonly HashSet<string> MutedNavIds = ["gearswap"];
     private static readonly bool SmeltMuted = true;
 
     private readonly SettingsService _settings = new();
@@ -282,7 +282,7 @@ internal sealed partial class MainForm : Form
         }
 
         AddGroup("nav.tools", first: true);
-        foreach (var id in new[] { "inventory", "autoclicker", "fastmount", "extraskill", "teleport", "speedboost" })
+        foreach (var id in new[] { "inventory", "autoclicker", "fastmount", "extraskill", "autocast", "teleport", "speedboost" })
         {
             var item = NavItems.First(n => n.Id == id);
             AddNavButton(navButtons, item.Id, item.Key);
@@ -291,13 +291,6 @@ internal sealed partial class MainForm : Form
         AddGroup("nav.play");
         AddNavButton(navButtons, "play", "nav.binding");
         AddNavButton(navButtons, "settings", "tab.settings");
-
-        AddGroup("nav.group.soon");
-        foreach (var id in new[] { "gearswap", "autocast" })
-        {
-            var item = NavItems.First(n => n.Id == id);
-            AddNavButton(navButtons, item.Id, item.Key);
-        }
 
         navButtons.Resize += (_, _) => SyncNavWidths();
         navButtons.HandleCreated += (_, _) => SyncNavWidths();

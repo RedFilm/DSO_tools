@@ -298,8 +298,8 @@ internal sealed partial class MainForm
         var nameLabel = UiFactory.Lbl(_loc.T("skillName"));
         nameLabel.AutoSize = false;
         nameLabel.TextAlign = ContentAlignment.MiddleLeft;
-        // Setting-row captions start at x=42 (after the key icon). Keep this label on that column.
-        nameLabel.Padding = new Padding(42, 0, 8, 0);
+        // Setting-row captions start after the icon slot. Keep this label on that column.
+        nameLabel.Padding = new Padding(36, 0, 8, 0);
         var name = UiFactory.Tb(profile.Name);
         name.AutoSize = false;
         name.Leave += (_, _) => Persist();
@@ -315,7 +315,7 @@ internal sealed partial class MainForm
             Padding = Padding.Empty,
             Visible = false
         };
-        var nameCol = 42 + WidestClickerLabel("skillName");
+        var nameCol = 36 + WidestClickerLabel("skillName");
         var nameRow = UiFactory.FieldRow(nameLabel, name, nameCol);
         nameRow.Height = 38;
         if (nameRow.RowStyles.Count > 0)

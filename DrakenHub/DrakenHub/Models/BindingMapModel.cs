@@ -58,6 +58,14 @@ internal static class BindingMapCollector
                 v => profile.Hotkey = v, profile.Name);
         }
 
+        for (var i = 0; i < s.AutoCast.Rows.Count; i++)
+        {
+            var index = i;
+            var row = s.AutoCast.Rows[index];
+            Add("ac:" + index, "bind.group.autocast", "hotkey", row.ToggleHotkey,
+                v => row.ToggleHotkey = v, $"AutoCast {index + 1}");
+        }
+
         foreach (var p in s.FastTeleport.Locations)
         {
             var loc = p;
@@ -80,13 +88,6 @@ internal static class BindingMapCollector
                 var profile = p;
                 Add("gs:" + profile.Id, "bind.group.gearswap", "hotkey", profile.Hotkey,
                     v => profile.Hotkey = v, profile.Name);
-            }
-            for (var i = 0; i < s.AutoCast.Rows.Count; i++)
-            {
-                var index = i;
-                var row = s.AutoCast.Rows[index];
-                Add("ac:" + index, "bind.group.autocast", "hotkey", row.ToggleHotkey,
-                    v => row.ToggleHotkey = v, $"AutoCast {index + 1}");
             }
         }
 

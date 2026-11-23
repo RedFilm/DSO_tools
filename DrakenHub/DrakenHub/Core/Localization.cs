@@ -21,7 +21,6 @@ internal sealed class Localization
         ["nav.group.inventory"] = ("Инвентарь", "Inventory"),
         ["nav.group.automation"] = ("Автоматизация", "Automation"),
         ["nav.group.system"] = ("Система", "System"),
-        ["nav.group.soon"] = ("Скоро", "Coming soon"),
         ["wip.tooltip"] = ("В разработке", "In development"),
         ["play.title"] = ("Карта биндов", "Binding map"),
         ["play.subtitle"] = ("Все горячие клавиши в одном месте. Клик — переназначить.", "All hotkeys in one place. Click a row to rebind."),
