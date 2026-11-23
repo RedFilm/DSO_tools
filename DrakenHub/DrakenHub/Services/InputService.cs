@@ -14,35 +14,60 @@ internal sealed class InputService
 
     public void MoveTo(Point p) => MoveTo(p.X, p.Y);
 
-    public void LeftClick(int x, int y, int settleMs = 5)
+    public void LeftClick(int x, int y, int settleMs = 5, int holdMs = 25)
     {
         MoveTo(x, y);
-        Thread.Sleep(settleMs);
+        Thread.Sleep(Math.Max(1, settleMs));
         SendMouse(WinApi.MouseeventfLeftDown);
-        Thread.Sleep(5);
+        Thread.Sleep(Math.Max(5, holdMs));
         SendMouse(WinApi.MouseeventfLeftUp);
     }
 
-    public void RightClick(int x, int y, int settleMs = 5)
+    public void RightClick(int x, int y, int settleMs = 5, int holdMs = 25)
     {
         MoveTo(x, y);
-        Thread.Sleep(settleMs);
+        Thread.Sleep(Math.Max(1, settleMs));
         SendMouse(WinApi.MouseeventfRightDown);
-        Thread.Sleep(5);
+        Thread.Sleep(Math.Max(5, holdMs));
         SendMouse(WinApi.MouseeventfRightUp);
     }
 
     public void DoubleClick(int x, int y, int settleMs = 5, int gapMs = 45)
     {
         MoveTo(x, y);
-        Thread.Sleep(settleMs);
+        Thread.Sleep(Math.Max(1, settleMs));
         SendMouse(WinApi.MouseeventfLeftDown);
-        Thread.Sleep(5);
+        Thread.Sleep(25);
         SendMouse(WinApi.MouseeventfLeftUp);
         Thread.Sleep(Math.Max(20, gapMs));
         SendMouse(WinApi.MouseeventfLeftDown);
-        Thread.Sleep(5);
+        Thread.Sleep(25);
         SendMouse(WinApi.MouseeventfLeftUp);
+    }
+
+    /// <summary>
+    /// Stronger LMB for flaky Flash/AIR UI buttons (map Enter etc.):
+    /// absolute move to point, hover, down/up with position flags, stay briefly.
+    /// </summary>
+    public void LeftClickReliable(int x, int y)
+    {
+        // 1) Desktop cursor
+        WinApi.SetCursorPos(x, y);
+        Thread.Sleep(30);
+
+        // 2) Absolute SendInput move (games that ignore SetCursorPos alone)
+        SendMouseAbsolute(x, y, WinApi.MouseeventfMove | WinApi.MouseeventfAbsolute | WinApi.MouseeventfVirtualDesk);
+        Thread.Sleep(80); // hover — Flash buttons often need mouseover before click
+
+        // 3) LMB down at that absolute position
+        SendMouseAbsolute(x, y,
+            WinApi.MouseeventfMove | WinApi.MouseeventfAbsolute | WinApi.MouseeventfVirtualDesk | WinApi.MouseeventfLeftDown);
+        Thread.Sleep(50);
+
+        // 4) LMB up at same position
+        SendMouseAbsolute(x, y,
+            WinApi.MouseeventfMove | WinApi.MouseeventfAbsolute | WinApi.MouseeventfVirtualDesk | WinApi.MouseeventfLeftUp);
+        Thread.Sleep(80); // keep cursor on button so the UI finishes handling the click
     }
 
     public void KeyPress(Keys key)
@@ -72,6 +97,28 @@ internal sealed class InputService
         {
             WinApi.ReleaseDC(IntPtr.Zero, hdc);
         }
+    }
+
+    private static void SendMouseAbsolute(int screenX, int screenY, uint flags)
+    {
+        var vs = SystemInformation.VirtualScreen;
+        var nx = (int)Math.Round((screenX - vs.Left) * 65535.0 / Math.Max(1, vs.Width - 1));
+        var ny = (int)Math.Round((screenY - vs.Top) * 65535.0 / Math.Max(1, vs.Height - 1));
+        var input = new WinApi.Input
+        {
+            Type = WinApi.InputMouse,
+            U = new WinApi.InputUnion
+            {
+                Mi = new WinApi.MouseInput
+                {
+                    Dx = nx,
+                    Dy = ny,
+                    DwFlags = flags,
+                    DwExtraInfo = IntPtr.Zero
+                }
+            }
+        };
+        WinApi.SendInput(1, [input], System.Runtime.InteropServices.Marshal.SizeOf<WinApi.Input>());
     }
 
     private static void SendMouse(uint flags)

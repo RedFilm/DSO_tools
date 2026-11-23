@@ -290,31 +290,58 @@ internal sealed class MacroRunner
             var tp = _settings.Current.FastTeleport;
             var inv = _settings.Current.Inventory;
             var delay = Math.Max(20, tp.ClickDelayMs);
+
+            // 1) Open inventory
             Press(inv.InventoryHotkey);
             await Delay(delay * 2, token);
+
+            // 2) RMB on map
             if (tp.MapItem != null)
             {
                 _input.RightClick(tp.MapItem.X, tp.MapItem.Y);
                 await Delay(delay * 4, token);
             }
+
+            // 3) Back button (world / region list)
+            if (tp.BackButton != null)
+            {
+                _input.LeftClick(tp.BackButton.X, tp.BackButton.Y);
+                await Delay(delay * 2, token);
+            }
+
+            // 4) Region
             if (loc.Region != null)
             {
                 _input.LeftClick(loc.Region.X, loc.Region.Y);
                 await Delay(delay * 2, token);
             }
+
+            // 5) Location
             if (loc.Location != null)
             {
                 _input.LeftClick(loc.Location.X, loc.Location.Y);
                 await Delay(delay * 2, token);
             }
+
+            // 6) Difficulty
             if (loc.Difficulty != null)
             {
                 _input.LeftClick(loc.Difficulty.X, loc.Difficulty.Y);
-                await Delay(delay * 2, token);
+                await Delay(Math.Max(delay * 4, 200), token);
             }
+            else
+            {
+                await Delay(Math.Max(delay * 2, 120), token);
+            }
+
+            // 7) Enter — LMB; re-focus game, then reliable click (hover + absolute down/up).
             if (tp.EnterButton != null)
             {
-                _input.LeftClick(tp.EnterButton.X, tp.EnterButton.Y);
+                EnsureGameFocused();
+                await Delay(60, token);
+                _input.LeftClickReliable(tp.EnterButton.X, tp.EnterButton.Y);
+                // Keep cursor on the button before Run() restores the old position.
+                await Delay(150, token);
             }
         });
     }

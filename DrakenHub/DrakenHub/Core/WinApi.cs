@@ -20,6 +20,7 @@ internal static class WinApi
     public const uint MouseeventfRightUp = 0x0010;
     public const uint MouseeventfMove = 0x0001;
     public const uint MouseeventfAbsolute = 0x8000;
+    public const uint MouseeventfVirtualDesk = 0x4000;
     public const int InputKeyboard = 1;
     public const int InputMouse = 0;
     public const uint MapvkVkToVsc = 0;
