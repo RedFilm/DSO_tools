@@ -122,6 +122,40 @@ internal sealed partial class MainForm
         Margin = new Padding(0, 4, 0, 4)
     };
 
+    /// <summary>
+    /// Bring the game forward, open the inventory with its hotkey, then match the grid.
+    /// The key toggles the bag, so a miss is followed by one more press: that reopens it if the first press closed it.
+    /// </summary>
+    private bool TryPrepareInventory(InventorySettings inv, out InventoryCalibrator.Hit hit)
+    {
+        hit = default;
+        var title = _settings.Current.GameWindowTitleContains;
+        if (!string.IsNullOrWhiteSpace(title) && !GameWindowFocus.TryActivate(title, out _))
+        {
+            MessageBox.Show(_loc.T("calib.noGame"), _loc.T("notify"), MessageBoxButtons.OK, MessageBoxIcon.Information);
+            return false;
+        }
+
+        var key = KeyNames.Parse(inv.InventoryHotkey);
+        if (key == Keys.None)
+        {
+            MessageBox.Show(_loc.T("calib.noKey"), _loc.T("notify"), MessageBoxButtons.OK, MessageBoxIcon.Information);
+            return false;
+        }
+
+        Thread.Sleep(120);
+        for (var attempt = 0; attempt < 2; attempt++)
+        {
+            _input.KeyPress(key);
+            Thread.Sleep(420);
+            if (InventoryCalibrator.TryMatch(out hit))
+                return true;
+        }
+
+        MessageBox.Show(_loc.T("calib.fail"), _loc.T("notify"), MessageBoxButtons.OK, MessageBoxIcon.Information);
+        return false;
+    }
+
     private Control BuildSellCalibrationSection(InventorySettings inv)
     {
         var calib = UiFactory.VStack();
@@ -144,6 +178,36 @@ internal sealed partial class MainForm
         var skills = new SettingRow(SettingRowKind.Hotkey, _loc.T("btn.skills"), "");
         BindHotkeyRow(skills, () => inv.SkillsWindowHotkey, v => inv.SkillsWindowHotkey = v, "util.skills", "btn.skills");
 
+        var auto = UiFactory.Btn(_loc.T("calib.auto"), BtnKind.Primary);
+        auto.Click += (_, _) =>
+        {
+            auto.Enabled = false;
+            Cursor.Current = Cursors.WaitCursor;
+            var gridWasVisible = _gridOverlay is { Visible: true };
+            if (_gridOverlay != null)
+                _gridOverlay.Visible = false;
+            try
+            {
+                if (!TryPrepareInventory(inv, out var hit))
+                    return;
+
+                InventoryCalibrator.Apply(inv, hit);
+                _suppressUiEvents = true;
+                try { _refreshAllLabels?.Invoke(); }
+                finally { _suppressUiEvents = false; }
+                Persist(immediate: true, hotkeys: false, grid: true);
+                SetStatusMessage(_loc.T("calib.ok"));
+                gridWasVisible = false;
+            }
+            finally
+            {
+                if (gridWasVisible && _gridOverlay != null && inv.Grid.ShowGrid)
+                    _gridOverlay.Visible = true;
+                Cursor.Current = Cursors.Default;
+                auto.Enabled = true;
+            }
+        };
+        calib.Controls.Add(auto);
         calib.Controls.Add(firstCell);
         calib.Controls.Add(firstTab);
         calib.Controls.Add(closeInv);
@@ -152,10 +216,12 @@ internal sealed partial class MainForm
         calib.Controls.Add(wisdom);
         calib.Controls.Add(skills);
 
-        var section = UiFactory.Section(_loc.T("section.calib"), calib, out var title);
+        var section = UiFactory.SectionCard(_loc.T("section.calib"), _loc.T("calib.hint"), calib, out var title, out var subtitle);
         _refreshAllLabels += () =>
         {
             title.Text = _loc.T("section.calib");
+            if (subtitle != null) subtitle.Text = _loc.T("calib.hint");
+            auto.Text = _loc.T("calib.auto");
             firstCell.LabelText = _loc.T("btn.firstCell");
             firstTab.LabelText = _loc.T("btn.firstTab");
             closeInv.LabelText = _loc.T("btn.closeInv");
@@ -333,7 +399,12 @@ internal sealed partial class MainForm
         var body = UiFactory.VStack();
 
         var show = UiFactory.Check(_loc.T("grid.show"), g.ShowGrid);
-        show.CheckedChanged += (_, _) => { g.ShowGrid = show.Checked; Persist(immediate: true, hotkeys: false, grid: true); };
+        show.CheckedChanged += (_, _) =>
+        {
+            if (_suppressUiEvents) return;
+            g.ShowGrid = show.Checked;
+            Persist(immediate: true, hotkeys: false, grid: true);
+        };
         var fast = UiFactory.Check(_loc.T("grid.fast"), g.FastFirstScan);
         fast.CheckedChanged += (_, _) => { g.FastFirstScan = fast.Checked; Persist(hotkeys: false, grid: true); };
         var checks = new FlowLayoutPanel
@@ -353,16 +424,30 @@ internal sealed partial class MainForm
         {
             var label = UiFactory.Lbl(_loc.T(key));
             var num = UiFactory.Num(min, max, get());
-            num.ValueChanged += (_, _) => { set((int)num.Value); Persist(hotkeys: false, grid: true); };
+            num.ValueChanged += (_, _) =>
+            {
+                if (_suppressUiEvents) return;
+                set((int)num.Value);
+                Persist(hotkeys: false, grid: true);
+            };
             body.Controls.Add(UiFactory.FieldRow(label, num, 220));
-            _refreshAllLabels += () => label.Text = _loc.T(key);
+            _refreshAllLabels += () =>
+            {
+                label.Text = _loc.T(key);
+                var v = Math.Clamp(get(), min, max);
+                if ((int)num.Value == v) return;
+                var was = _suppressUiEvents;
+                _suppressUiEvents = true;
+                try { num.Value = v; }
+                finally { _suppressUiEvents = was; }
+            };
         }
 
-        NumRow("grid.cell", () => g.CellSize, v => g.CellSize = v, 16, 128);
-        NumRow("grid.tab", () => g.TabMarkerSize, v => g.TabMarkerSize = v, 8, 64);
+        NumRow("grid.cell", () => g.CellSize, v => g.CellSize = v, 16, 220);
+        NumRow("grid.tab", () => g.TabMarkerSize, v => g.TabMarkerSize = v, 8, 96);
         NumRow("grid.gapx", () => g.GapX, v => g.GapX = v, 0, 40);
         NumRow("grid.gapy", () => g.GapY, v => g.GapY = v, 0, 40);
-        NumRow("grid.tabx", () => g.TabOffsetX, v => g.TabOffsetX = v, 10, 120);
+        NumRow("grid.tabx", () => g.TabOffsetX, v => g.TabOffsetX = v, 10, 200);
         NumRow("grid.cross", () => g.CrosshairSize, v => g.CrosshairSize = v, 8, 80);
         NumRow("grid.scan", () => g.ScanLevel, v => g.ScanLevel = v, 1, 2);
         NumRow("grid.sellDelay", () => g.SellClickDelayMs, v => g.SellClickDelayMs = v, 8, 500);
@@ -374,6 +459,11 @@ internal sealed partial class MainForm
             show.Text = _loc.T("grid.show");
             fast.Text = _loc.T("grid.fast");
             title.Text = _loc.T("section.grid");
+            if (show.Checked == g.ShowGrid) return;
+            var was = _suppressUiEvents;
+            _suppressUiEvents = true;
+            try { show.Checked = g.ShowGrid; }
+            finally { _suppressUiEvents = was; }
         };
         return section;
     }
