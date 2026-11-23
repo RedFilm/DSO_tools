@@ -474,28 +474,14 @@ internal sealed partial class MainForm
             foreach (var item in _settings.Current.Inventory.OtherItems.ToList())
             {
                 var it = item;
+                var block = UiFactory.VStack();
                 var enabled = UiFactory.Check(it.Name, it.Enabled);
-                enabled.Width = 100;
                 enabled.CheckedChanged += (_, _) => { it.Enabled = enabled.Checked; Persist(grid: true); };
                 var name = UiFactory.Tb(it.Name);
-                name.Width = 140;
                 name.TextChanged += (_, _) => { it.Name = name.Text; enabled.Text = name.Text; };
                 name.Leave += (_, _) => Persist();
-                var pointsLabel = UiFactory.Lbl($"{it.Points.Count} {_loc.T("points")}", true);
-                pointsLabel.BackColor = Theme.Panel;
-                pointsLabel.Width = 72;
                 var add = UiFactory.Btn(_loc.T("btn.addPoint"), BtnKind.Neutral);
                 add.Click += (_, _) => { AddColorPoint(it.Points); Rebuild(); UiFactory.Relayout(list); };
-                var del = UiFactory.Btn(_loc.T("btn.delLast"), BtnKind.Danger);
-                del.Click += (_, _) =>
-                {
-                    if (it.Points.Count == 0) return;
-                    if (!ConfirmAction("confirm.delete")) return;
-                    it.Points.RemoveAt(it.Points.Count - 1);
-                    Persist(grid: true);
-                    Rebuild();
-                    UiFactory.Relayout(list);
-                };
                 var clear = UiFactory.Btn(_loc.T("btn.clear"), BtnKind.Neutral);
                 clear.Click += (_, _) =>
                 {
@@ -506,60 +492,69 @@ internal sealed partial class MainForm
                     Rebuild();
                     UiFactory.Relayout(list);
                 };
+                var removeItem = MakeDeleteButton(() =>
+                {
+                    _settings.Current.Inventory.OtherItems.Remove(it);
+                    Persist(grid: true);
+                    Rebuild();
+                    UiFactory.Relayout(list);
+                });
+                block.Controls.Add(UiFactory.ActionRow(
+                    (enabled, 120), (name, 160), (add, 0), (clear, 0), (removeItem, removeItem.Width)));
 
-                list.Controls.Add(UiFactory.ActionRow(
-                    (enabled, 110), (name, 140), (add, 0), (del, 0), (clear, 0), (pointsLabel, 72)));
+                for (var i = 0; i < it.Points.Count; i++)
+                {
+                    var index = i;
+                    var point = it.Points[index];
+                    var caption = UiFactory.Lbl(PointCaption(index, point));
+                    caption.AutoSize = false;
+                    caption.TextAlign = ContentAlignment.MiddleLeft;
+                    var removePoint = MakeDeleteButton(() =>
+                    {
+                        if (index < 0 || index >= it.Points.Count) return;
+                        it.Points.RemoveAt(index);
+                        Persist(grid: true);
+                        Rebuild();
+                        UiFactory.Relayout(list);
+                    });
+                    _refreshAllLabels += () =>
+                    {
+                        if (!caption.IsDisposed)
+                            caption.Text = PointCaption(index, point);
+                    };
+                    block.Controls.Add(UiFactory.ActionRow((caption, 0), (removePoint, removePoint.Width)));
+                }
+
+                _refreshAllLabels += () =>
+                {
+                    if (add.IsDisposed) return;
+                    add.Text = _loc.T("btn.addPoint");
+                    clear.Text = _loc.T("btn.clear");
+                };
+                list.Controls.Add(block);
             }
             list.ResumeLayout(false);
             UiFactory.Relayout(list);
         }
 
         var addItem = UiFactory.Btn(_loc.T("btn.addItem"), BtnKind.Neutral, 28);
-        addItem.Width = 140;
         addItem.Click += (_, _) =>
         {
             _settings.Current.Inventory.OtherItems.Add(new CustomItemProfile { Name = "Item" });
             Persist();
             Rebuild();
         };
-        var delLast = UiFactory.Btn(_loc.T("delete.last"), BtnKind.Danger, 28);
-        delLast.Width = 140;
-        delLast.Click += (_, _) =>
-        {
-            var items = _settings.Current.Inventory.OtherItems;
-            if (items.Count == 0) return;
-            if (!ConfirmAction("confirm.delete")) return;
-            items.RemoveAt(items.Count - 1);
-            Persist();
-            Rebuild();
-        };
-
-        var header = new FlowLayoutPanel
-        {
-            FlowDirection = FlowDirection.LeftToRight,
-            WrapContents = false,
-            AutoSize = false,
-            Height = 32,
-            BackColor = Theme.Panel,
-            Margin = new Padding(0, 8, 0, 6),
-            Padding = Padding.Empty
-        };
-        addItem.Margin = new Padding(0, 0, 8, 0);
-        delLast.Margin = Padding.Empty;
-        header.Controls.Add(addItem);
-        header.Controls.Add(delLast);
 
         var wrap = UiFactory.VStack();
-        wrap.Controls.Add(header);
+        wrap.Controls.Add(addItem);
         wrap.Controls.Add(list);
         Rebuild();
-        _refreshAllLabels += () =>
-        {
-            addItem.Text = _loc.T("btn.addItem");
-            delLast.Text = _loc.T("delete.last");
-        };
+        _refreshAllLabels += () => addItem.Text = _loc.T("btn.addItem");
         return wrap;
     }
+
+    private string PointCaption(int index, RelativeColorPoint point) =>
+        $"{_loc.Tf("point.n", index + 1)}  ({point.OffsetX}, {point.OffsetY})";
 
     private Panel BuildSmeltSubPage()
     {

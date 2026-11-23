@@ -36,7 +36,13 @@ internal sealed partial class MainForm
         {
             list.Controls.Clear();
             foreach (var loc in tp.Locations.ToList())
-                list.Controls.Add(BuildTeleportBlock(loc, scroll));
+                list.Controls.Add(BuildTeleportBlock(loc, scroll, () =>
+                {
+                    tp.Locations.Remove(loc);
+                    Persist(immediate: true);
+                    Rebuild();
+                    _refreshBindingMap?.Invoke();
+                }));
             UiFactory.Relayout(scroll);
         }
 
@@ -48,29 +54,15 @@ internal sealed partial class MainForm
             Rebuild();
             _refreshBindingMap?.Invoke();
         };
-        var del = UiFactory.Btn(_loc.T("delete.last"), BtnKind.Danger);
-        del.Click += (_, _) =>
-        {
-            if (tp.Locations.Count == 0) return;
-            if (!ConfirmAction("confirm.delete")) return;
-            tp.Locations.RemoveAt(tp.Locations.Count - 1);
-            Persist(immediate: true);
-            Rebuild();
-            _refreshBindingMap?.Invoke();
-        };
-        UiFactory.Add(stack, UiFactory.EqualRow(add, del));
+        UiFactory.Add(stack, add);
         UiFactory.Add(stack, list);
         Rebuild();
         _refreshTeleport = Rebuild;
-        _refreshAllLabels += () =>
-        {
-            add.Text = _loc.T("add.location");
-            del.Text = _loc.T("delete.last");
-        };
+        _refreshAllLabels += () => add.Text = _loc.T("add.location");
         return scroll;
     }
 
-    private Control BuildTeleportBlock(TeleportLocation loc, Control layoutHost)
+    private Control BuildTeleportBlock(TeleportLocation loc, Control layoutHost, Action remove)
     {
         var body = UiFactory.VStack();
         body.Visible = false;
@@ -92,7 +84,7 @@ internal sealed partial class MainForm
 
         var hotkey = UiFactory.Btn("", BtnKind.Primary, 30);
         BindLaunchButton(hotkey, () => loc.Hotkey, v => loc.Hotkey = v, "tp:" + loc.Id, "hotkey");
-        var wrap = BuildCollapsibleBlock(loc.Name, body, layoutHost, hotkey);
+        var wrap = BuildCollapsibleBlock(loc.Name, body, layoutHost, hotkey, MakeDeleteButton(remove));
         name.TextChanged += (_, _) =>
         {
             loc.Name = name.Text;

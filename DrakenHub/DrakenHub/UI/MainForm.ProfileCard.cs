@@ -3,40 +3,49 @@ namespace DrakenHub.UI;
 internal sealed partial class MainForm
 {
     /// <summary>Collapsible header+body block that always calls UiFactory.Relayout on the scroll host.</summary>
+    private Button MakeDeleteButton(Action remove)
+    {
+        var btn = UiFactory.Btn(_loc.T("delete"), BtnKind.Danger, 32);
+        btn.Width = WidestClickerLabel("delete") + 20;
+        btn.Click += (_, _) =>
+        {
+            if (!ConfirmAction("confirm.delete")) return;
+            remove();
+        };
+        _refreshAllLabels += () =>
+        {
+            if (!btn.IsDisposed)
+                btn.Text = _loc.T("delete");
+        };
+        return btn;
+    }
+
     private static Panel BuildCollapsibleBlock(
         string title,
         Control body,
         Control layoutHost,
-        Control? trailingHeaderControl = null)
+        Control? trailingHeaderControl = null,
+        Control? deleteControl = null)
     {
         var startExpanded = body.Visible;
         const int headerH = 38;
         var headerBtn = UiFactory.Btn((startExpanded ? "▾ " : "▸ ") + title, BtnKind.Neutral, headerH);
         headerBtn.TextAlign = ContentAlignment.MiddleLeft;
 
-        Control headerRow = trailingHeaderControl == null
-            ? headerBtn
-            : UiFactory.EqualRow(headerBtn, trailingHeaderControl);
-
-        // EqualRow forces every button to RowH, and the hotkey used to be clamped back to 30
-        // afterwards — the two halves of one header ended up different heights.
-        void FitHeaderButton(Control button, Padding margin)
+        Control headerRow;
+        if (trailingHeaderControl == null && deleteControl == null)
         {
-            button.Height = headerH;
-            button.MinimumSize = new Size(48, headerH);
-            button.MaximumSize = new Size(0, headerH);
-            button.Margin = margin;
+            headerBtn.Margin = Padding.Empty;
+            headerRow = headerBtn;
         }
-
-        FitHeaderButton(headerBtn, trailingHeaderControl == null ? Padding.Empty : new Padding(0, 0, 2, 0));
-        if (trailingHeaderControl != null)
-            FitHeaderButton(trailingHeaderControl, new Padding(2, 0, 0, 0));
-
-        if (headerRow is TableLayoutPanel headerTable)
+        else
         {
-            headerTable.Height = headerH;
-            if (headerTable.RowStyles.Count > 0)
-                headerTable.RowStyles[0].Height = headerH;
+            var cells = new List<(Control Control, int Width)> { (headerBtn, 0) };
+            if (trailingHeaderControl != null)
+                cells.Add((trailingHeaderControl, 0));
+            if (deleteControl != null)
+                cells.Add((deleteControl, Math.Max(96, deleteControl.Width)));
+            headerRow = UiFactory.ActionRow(cells.ToArray());
         }
 
         var wrap = new Panel

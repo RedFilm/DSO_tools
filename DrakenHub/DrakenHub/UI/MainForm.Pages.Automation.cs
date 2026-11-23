@@ -260,7 +260,13 @@ internal sealed partial class MainForm
         {
             listHost.Controls.Clear();
             foreach (var profile in es.Profiles.ToList())
-                listHost.Controls.Add(BuildExtraSkillBlock(profile, scroll));
+                listHost.Controls.Add(BuildExtraSkillBlock(profile, scroll, () =>
+            {
+                es.Profiles.Remove(profile);
+                Persist(immediate: true);
+                Rebuild();
+                _refreshBindingMap?.Invoke();
+            }));
             UiFactory.Relayout(scroll);
         }
 
@@ -272,33 +278,22 @@ internal sealed partial class MainForm
             Rebuild();
             _refreshBindingMap?.Invoke();
         };
-        var del = UiFactory.Btn(_loc.T("delete.last"), BtnKind.Danger);
-        del.Click += (_, _) =>
-        {
-            if (es.Profiles.Count == 0) return;
-            if (!ConfirmAction("confirm.delete")) return;
-            es.Profiles.RemoveAt(es.Profiles.Count - 1);
-            Persist(immediate: true);
-            Rebuild();
-            _refreshBindingMap?.Invoke();
-        };
 
         var skillsInner = UiFactory.VStack();
-        skillsInner.Controls.Add(UiFactory.EqualRow(add, del));
+        skillsInner.Controls.Add(add);
         skillsInner.Controls.Add(listHost);
         UiFactory.Add(stack, UiFactory.Section(_loc.T("skills"), skillsInner, out var skillsTitle));
         _refreshAllLabels += () =>
         {
             skillsTitle.Text = _loc.T("skills");
             add.Text = _loc.T("add.extraskill");
-            del.Text = _loc.T("delete.last");
         };
         Rebuild();
         _refreshExtraSkill = Rebuild;
         return scroll;
     }
 
-    private Control BuildExtraSkillBlock(ExtraSkillProfile profile, Control layoutHost)
+    private Control BuildExtraSkillBlock(ExtraSkillProfile profile, Control layoutHost, Action remove)
     {
         var nameLabel = UiFactory.Lbl(_loc.T("skillName"));
         nameLabel.AutoSize = false;
@@ -333,7 +328,7 @@ internal sealed partial class MainForm
 
         var hotkey = UiFactory.Btn("", BtnKind.Primary, 30);
         BindLaunchButton(hotkey, () => profile.Hotkey, v => profile.Hotkey = v, "es:" + profile.Id, "hotkey");
-        var wrap = BuildCollapsibleBlock(profile.Name, body, layoutHost, hotkey);
+        var wrap = BuildCollapsibleBlock(profile.Name, body, layoutHost, hotkey, MakeDeleteButton(remove));
         // start collapsed
         body.Visible = false;
         SetCollapsibleTitle(wrap, profile.Name);
@@ -360,11 +355,10 @@ internal sealed partial class MainForm
         var main = new SettingRow(SettingRowKind.Hotkey, _loc.T("mainPanel"), "");
         BindHotkeyRow(main, () => gs.MainPanelHotkey, SetMainPanelHotkey, "util.main", "mainPanel");
         var add = UiFactory.Btn(_loc.T("add.gearswap"), BtnKind.Neutral);
-        var del = UiFactory.Btn(_loc.T("delete.last"), BtnKind.Danger);
         var top = UiFactory.VStack();
         top.Controls.Add(invKey);
         top.Controls.Add(main);
-        top.Controls.Add(UiFactory.EqualRow(add, del));
+        top.Controls.Add(add);
         UiFactory.Add(stack, top);
 
         var delayRow = UiFactory.DelaySliderRow(_loc.T("delay"), 1, 200, gs.ClickDelayMs,
@@ -376,20 +370,18 @@ internal sealed partial class MainForm
         {
             list.Controls.Clear();
             foreach (var p in gs.Profiles.ToList())
-                list.Controls.Add(BuildGearSwapBlock(p, scroll));
+                list.Controls.Add(BuildGearSwapBlock(p, scroll, () =>
+                {
+                    gs.Profiles.Remove(p);
+                    Persist(immediate: true);
+                    Rebuild();
+                    _refreshBindingMap?.Invoke();
+                }));
             UiFactory.Relayout(scroll);
         }
         add.Click += (_, _) =>
         {
             gs.Profiles.Add(new GearSwapProfile { Name = $"Gear Swap {gs.Profiles.Count + 1}" });
-            Persist(immediate: true);
-            Rebuild();
-        };
-        del.Click += (_, _) =>
-        {
-            if (gs.Profiles.Count == 0) return;
-            if (!ConfirmAction("confirm.delete")) return;
-            gs.Profiles.RemoveAt(gs.Profiles.Count - 1);
             Persist(immediate: true);
             Rebuild();
         };
@@ -400,12 +392,11 @@ internal sealed partial class MainForm
         {
             if (delayRow.Controls[0] is Label l) l.Text = _loc.T("delay");
             add.Text = _loc.T("add.gearswap");
-            del.Text = _loc.T("delete.last");
         };
         return scroll;
     }
 
-    private Control BuildGearSwapBlock(GearSwapProfile profile, Control layoutHost)
+    private Control BuildGearSwapBlock(GearSwapProfile profile, Control layoutHost, Action remove)
     {
         var body = UiFactory.VStack();
         body.Visible = false;
@@ -433,7 +424,8 @@ internal sealed partial class MainForm
             for (var i = 0; i < profile.Items.Count; i++)
             {
                 var index = i;
-                var btn = UiFactory.Btn($"{_loc.T("item")} {index + 1}: {profile.Items[index]}", BtnKind.Neutral);
+                var cell = profile.Items[index];
+                var btn = UiFactory.Btn($"{_loc.T("item")} {index + 1}: {cell}", BtnKind.Neutral);
                 btn.Click += (_, _) =>
                 {
                     var size = _settings.Current.Inventory.Grid.CellSize;
@@ -441,16 +433,22 @@ internal sealed partial class MainForm
                     Hide();
                     overlay.ShowDialog();
                     Show();
-                    if (overlay.Result == null)
-                        profile.Items.RemoveAt(index);
-                    else
-                        profile.Items[index] = InventoryLayout.PointToCell(_settings.Current.Inventory, overlay.Result.Value)
-                                              ?? GuessCellFromPoint(overlay.Result.Value);
+                    if (overlay.Result == null) return;
+                    profile.Items[index] = InventoryLayout.PointToCell(_settings.Current.Inventory, overlay.Result.Value)
+                                          ?? GuessCellFromPoint(overlay.Result.Value);
                     Persist(immediate: true);
                     RebuildItems();
                     RelayoutProfileHost(layoutHost, body);
                 };
-                itemsHost.Controls.Add(btn);
+                var del = MakeDeleteButton(() =>
+                {
+                    if (index < 0 || index >= profile.Items.Count) return;
+                    profile.Items.RemoveAt(index);
+                    Persist(immediate: true);
+                    RebuildItems();
+                    RelayoutProfileHost(layoutHost, body);
+                });
+                itemsHost.Controls.Add(UiFactory.ActionRow((btn, 0), (del, del.Width)));
             }
             RelayoutProfileHost(layoutHost, body);
         }
@@ -462,27 +460,18 @@ internal sealed partial class MainForm
             Persist();
             RebuildItems();
         };
-        var delItem = UiFactory.Btn(_loc.T("delete.last"), BtnKind.Danger);
-        delItem.Click += (_, _) =>
-        {
-            if (profile.Items.Count == 0) return;
-            if (!ConfirmAction("confirm.delete")) return;
-            profile.Items.RemoveAt(profile.Items.Count - 1);
-            Persist();
-            RebuildItems();
-        };
 
         body.Controls.Add(UiFactory.FieldRow(nameLabel, name, 90));
         body.Controls.Add(target);
         body.Controls.Add(skill);
         body.Controls.Add(UiFactory.FieldRow(tabLabel, tab, 90));
-        body.Controls.Add(UiFactory.EqualRow(addItem, delItem));
+        body.Controls.Add(addItem);
         body.Controls.Add(itemsHost);
         RebuildItems();
 
         var hotkey = UiFactory.Btn("", BtnKind.Primary, 30);
         BindLaunchButton(hotkey, () => profile.Hotkey, v => profile.Hotkey = v, "gs:" + profile.Id, "hotkey");
-        var wrap = BuildCollapsibleBlock(profile.Name, body, layoutHost, hotkey);
+        var wrap = BuildCollapsibleBlock(profile.Name, body, layoutHost, hotkey, MakeDeleteButton(remove));
         name.TextChanged += (_, _) =>
         {
             profile.Name = name.Text;
@@ -493,7 +482,6 @@ internal sealed partial class MainForm
             nameLabel.Text = _loc.T("name");
             tabLabel.Text = _loc.T("tab");
             addItem.Text = _loc.T("add.item");
-            delItem.Text = _loc.T("delete.last");
         };
         return wrap;
     }
