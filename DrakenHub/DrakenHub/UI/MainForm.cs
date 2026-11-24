@@ -7,7 +7,7 @@ namespace DrakenHub.UI;
 internal sealed partial class MainForm : Form
 {
     // Flip these when features leave WIP.
-    private static readonly HashSet<string> MutedNavIds = ["gearswap"];
+    private static readonly HashSet<string> MutedNavIds = ["gearswap", "autocast"];
     private static readonly bool SmeltMuted = true;
 
     private readonly SettingsService _settings = new();
@@ -143,7 +143,7 @@ internal sealed partial class MainForm : Form
             PlaceShell();
             RegisterAllHotkeys();
             _autoClicker.ApplySettings();
-            _autoCast.ApplySettings();
+            ApplyAutoCast();
             UpdateGridOverlay();
             _statusTimer.Start();
             RefreshStatusBar();
@@ -501,7 +501,7 @@ internal sealed partial class MainForm : Form
         {
             RegisterAllHotkeys();
             _autoClicker.ApplySettings();
-            _autoCast.ApplySettings();
+            ApplyAutoCast();
             _persistHotkeys = false;
             _refreshBindingMap?.Invoke();
         }
@@ -979,6 +979,13 @@ internal sealed partial class MainForm : Form
         {
             _gridOverlay.UpdateGeometry(cells, tabs, samples);
         }
+    }
+
+    private void ApplyAutoCast()
+    {
+        if (MutedNavIds.Contains("autocast"))
+            return;
+        _autoCast.ApplySettings();
     }
 
     private void RegisterAllHotkeys()

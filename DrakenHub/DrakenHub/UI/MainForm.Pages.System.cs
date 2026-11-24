@@ -330,7 +330,7 @@ internal sealed partial class MainForm
                 RebuildUi(_activePage);
                 RegisterAllHotkeys();
                 _autoClicker.ApplySettings();
-                _autoCast.ApplySettings();
+                ApplyAutoCast();
                 UpdateGridOverlay();
                 SetStatusMessage(_loc.T("import.ok"));
             }
