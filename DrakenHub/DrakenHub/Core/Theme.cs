@@ -29,6 +29,9 @@ internal static class Theme
     /// <summary>Cool cap for a section title. Lighter than the card body, not the warm accent.</summary>
     public static readonly Color Header = Color.FromArgb(54, 58, 66);
     public static readonly Color HeaderLine = Color.FromArgb(118, 126, 138);
+    /// <summary>Warm rim around the window, lighter than the caption so the frame reads as its own edge.</summary>
+    public static readonly Color Frame = Color.FromArgb(112, 96, 74);
+    public static readonly Color FrameEdge = Color.FromArgb(196, 160, 112);
 
     /// <summary>Muted warm accent — less saturated than pure gold.</summary>
     public static readonly Color Accent = Color.FromArgb(186, 152, 112);

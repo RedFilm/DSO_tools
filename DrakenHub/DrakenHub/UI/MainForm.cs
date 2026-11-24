@@ -1,3 +1,4 @@
+using System.Runtime.InteropServices;
 using DrakenHub.Core;
 using DrakenHub.Models;
 using DrakenHub.Services;
@@ -24,6 +25,8 @@ internal sealed partial class MainForm : Form
     private readonly Panel _navRail = new();
     private readonly Panel _contentHost = new();
     private readonly Panel _statusBar = new();
+    private WindowChrome? _chrome;
+    private bool _syncingFrame;
     private readonly Label _statusLeft = new();
     private readonly Label _statusRight = new();
     private readonly Dictionary<string, Panel> _pages = new();
@@ -107,17 +110,20 @@ internal sealed partial class MainForm : Form
         _loc.Language = _settings.Current.Language;
 
         Text = "DrakenHub";
-        FormBorderStyle = FormBorderStyle.Sizable;
+        FormBorderStyle = FormBorderStyle.None;
         MaximizeBox = true;
         MinimizeBox = true;
         StartPosition = FormStartPosition.Manual;
-        BackColor = Theme.Bg;
+        Icon = AppIcon.Copy();
+        BackColor = Theme.Frame;
+        Padding = new Padding(WindowChrome.Grip);
         ForeColor = Theme.Text;
         Font = Theme.UiFont;
         MinimumSize = new Size(980, 640);
         ApplySavedBounds();
         KeyPreview = true;
         DoubleBuffered = true;
+        SetStyle(ControlStyles.ResizeRedraw, true);
 
         _persistTimer.Tick += (_, _) =>
         {
@@ -209,14 +215,16 @@ internal sealed partial class MainForm : Form
         if (WindowState == FormWindowState.Minimized || Left <= -10000 || Top <= -10000)
             return;
 
-        var bounds = new Rectangle(Left, Top, Width, Height);
+        var bounds = WindowState == FormWindowState.Maximized
+            ? RestoreBounds
+            : new Rectangle(Left, Top, Width, Height);
         if (!IsReasonablyOnScreen(bounds))
             return;
 
-        _settings.Current.WindowWidth = Width;
-        _settings.Current.WindowHeight = Height;
-        _settings.Current.WindowX = Left;
-        _settings.Current.WindowY = Top;
+        _settings.Current.WindowWidth = bounds.Width;
+        _settings.Current.WindowHeight = bounds.Height;
+        _settings.Current.WindowX = bounds.X;
+        _settings.Current.WindowY = bounds.Y;
     }
 
     private static bool IsReasonablyOnScreen(Rectangle bounds)
@@ -231,10 +239,118 @@ internal sealed partial class MainForm : Form
         return false;
     }
 
+    protected override void OnHandleCreated(EventArgs e)
+    {
+        base.OnHandleCreated(e);
+        WindowChrome.EnableShadow(Handle);
+    }
+
+    protected override void OnResize(EventArgs e)
+    {
+        base.OnResize(e);
+        SyncFrame();
+    }
+
+    protected override void OnPaint(PaintEventArgs e)
+    {
+        base.OnPaint(e);
+        if (WindowState == FormWindowState.Maximized) return;
+        using var pen = new Pen(Theme.FrameEdge, 2f);
+        e.Graphics.DrawRectangle(pen, 1, 1, ClientSize.Width - 3, ClientSize.Height - 3);
+    }
+
+    private void SyncFrame()
+    {
+        if (_syncingFrame || _chrome == null) return;
+        _syncingFrame = true;
+        try
+        {
+            var maximized = WindowState == FormWindowState.Maximized;
+            var pad = maximized ? Padding.Empty : new Padding(WindowChrome.Grip);
+            if (Padding != pad)
+                Padding = pad;
+            _chrome.SetMaximized(maximized);
+            _chrome.ApplyTooltips(_toolTips, _loc);
+            Invalidate();
+        }
+        finally
+        {
+            _syncingFrame = false;
+        }
+    }
+
     protected override void WndProc(ref Message m)
     {
+        const int WM_GETMINMAXINFO = 0x0024;
+        const int WM_NCHITTEST = 0x0084;
+        if (m.Msg == WM_GETMINMAXINFO)
+        {
+            base.WndProc(ref m);
+            FitMaximizedBounds(m.LParam);
+            return;
+        }
+
+        if (m.Msg == WM_NCHITTEST && WindowState != FormWindowState.Maximized)
+        {
+            var hit = EdgeHit(PointToClient(Cursor.Position));
+            if (hit != 1)
+            {
+                m.Result = (IntPtr)hit;
+                return;
+            }
+        }
+
         if (_hotkeys.ProcessMessage(ref m)) return;
         base.WndProc(ref m);
+    }
+
+    private static int EdgeHit(Point p, int width, int height)
+    {
+        var grip = WindowChrome.Grip;
+        var left = p.X < grip;
+        var right = p.X >= width - grip;
+        var top = p.Y < grip;
+        var bottom = p.Y >= height - grip;
+        if (top && left) return 13;
+        if (top && right) return 14;
+        if (bottom && left) return 16;
+        if (bottom && right) return 17;
+        if (left) return 10;
+        if (right) return 11;
+        if (top) return 12;
+        if (bottom) return 15;
+        return 1;
+    }
+
+    private int EdgeHit(Point p) => EdgeHit(p, ClientSize.Width, ClientSize.Height);
+
+    private void FitMaximizedBounds(IntPtr lParam)
+    {
+        var screen = Screen.FromHandle(Handle);
+        var area = screen.WorkingArea;
+        var bounds = screen.Bounds;
+        var info = Marshal.PtrToStructure<MinMaxInfo>(lParam);
+        info.MaxPosition = new WinPoint(area.Left - bounds.Left, area.Top - bounds.Top);
+        info.MaxSize = new WinPoint(area.Width, area.Height);
+        Marshal.StructureToPtr(info, lParam, false);
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct WinPoint
+    {
+        public int X;
+        public int Y;
+        public WinPoint(int x, int y) { X = x; Y = y; }
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct MinMaxInfo
+    {
+        public WinPoint Reserved;
+        public WinPoint MaxSize;
+        public WinPoint MaxPosition;
+        public WinPoint MinTrackSize;
+        public WinPoint MaxTrackSize;
     }
 
     private void BuildChrome()
@@ -247,18 +363,6 @@ internal sealed partial class MainForm : Form
         _navRail.Dock = DockStyle.Fill;
         _navRail.BackColor = Theme.Panel;
         _navRail.Padding = new Padding(0);
-
-        var brand = new Label
-        {
-            Text = "DrakenHub",
-            Dock = DockStyle.Top,
-            Height = 48,
-            Font = Theme.UiFontTitle,
-            ForeColor = Theme.Accent,
-            TextAlign = ContentAlignment.MiddleLeft,
-            Padding = new Padding(14, 0, 0, 0),
-            BackColor = Theme.Panel
-        };
 
         var navButtons = new FlowLayoutPanel
         {
@@ -302,7 +406,9 @@ internal sealed partial class MainForm : Form
         SyncNavWidths();
 
         _navRail.Controls.Add(navButtons);
-        _navRail.Controls.Add(brand);
+
+        _chrome = new WindowChrome(this);
+        _chrome.ApplyTooltips(_toolTips, _loc);
 
         _contentHost.Dock = DockStyle.Fill;
         _contentHost.BackColor = Theme.Bg;
@@ -334,6 +440,7 @@ internal sealed partial class MainForm : Form
         _shell.Panel2.Controls.Add(_contentHost);
         Controls.Add(_shell);
         Controls.Add(_statusBar);
+        Controls.Add(_chrome);
     }
 
     private void AddNavButton(FlowLayoutPanel host, string id, string key)
@@ -357,7 +464,7 @@ internal sealed partial class MainForm : Form
         _tray = new NotifyIcon
         {
             Text = "DrakenHub",
-            Icon = SystemIcons.Application,
+            Icon = AppIcon.Copy(),
             Visible = true
         };
         var menu = new ContextMenuStrip();
@@ -1088,6 +1195,7 @@ internal sealed partial class MainForm : Form
         }
 
         RelocalizeTray();
+        _chrome?.ApplyTooltips(_toolTips, _loc);
     }
 
     private void RebuildUi(string? stayOn = null)
