@@ -369,18 +369,14 @@ internal sealed class MacroRunner
     {
         var maxPasses = Math.Clamp(inv.Grid.ScanLevel, 1, 2);
         var delay = Math.Max(8, inv.Grid.SellClickDelayMs);
-        var soldTotal = 0;
 
         for (var pass = 0; pass < maxPasses; pass++)
         {
-            // Empty tab / nothing left: skip further passes immediately.
-            if (pass > 0 && soldTotal == 0)
-                break;
-
             List<(int Row, int Col, Point Center)> hits;
             using (var snapshot = ColorScanService.CaptureGrid(inv))
                 hits = _scan.FindMatches(inv, includeOther, snapshot);
 
+            // Nothing on this pass: leave the tab. Extra passes run only after a pass that found items.
             if (hits.Count == 0)
                 break;
 
@@ -394,11 +390,10 @@ internal sealed class MacroRunner
                     _input.LeftClick(hit.Center.X, hit.Center.Y, settleMs: 2);
                 else
                     _input.RightClick(hit.Center.X, hit.Center.Y, settleMs: 2);
-                soldTotal++;
                 await Delay(delay, token);
             }
 
-            // Let inventory settle before a possible second pass (shifted items).
+            // Pause before another pass, so a click that did not register can be tried again.
             if (pass + 1 < maxPasses)
                 await Delay(Math.Max(15, delay / 2), token);
         }

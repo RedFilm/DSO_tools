@@ -66,19 +66,14 @@ internal sealed partial class MainForm
         return root;
     }
 
-    /// <summary>
-    /// Daily flow first: Launch → What to sell → one-time Calibration → Advanced tuning.
-    /// </summary>
+    /// <summary>Readiness first, then what to sell. Launch lives inside general settings.</summary>
     private Panel BuildSellSubPage()
     {
         var scroll = UiFactory.ScrollPage(out var stack);
         var inv = _settings.Current.Inventory;
 
-        UiFactory.Add(stack, BuildChecklistSection());
-        UiFactory.Add(stack, BuildSellLaunchSection(inv));
+        UiFactory.Add(stack, BuildChecklistSection(inv));
         UiFactory.Add(stack, BuildSellTargetsSection());
-        UiFactory.Add(stack, BuildSellCalibrationSection(inv));
-        UiFactory.Add(stack, BuildAdvancedInventorySection());
         return scroll;
     }
 
@@ -113,12 +108,12 @@ internal sealed partial class MainForm
     {
         Text = text,
         AutoSize = false,
-        Height = 22,
-        ForeColor = Theme.TextMuted,
-        Font = Theme.UiFontSmall,
+        Height = Theme.UiFont.Height + 8,
+        ForeColor = Theme.Text,
+        Font = Theme.UiFontValue,
         TextAlign = ContentAlignment.MiddleLeft,
         BackColor = Theme.Panel,
-        Margin = new Padding(0, 4, 0, 4)
+        Margin = new Padding(0, 10, 0, 4)
     };
 
     /// <summary>
@@ -221,16 +216,8 @@ internal sealed partial class MainForm
         BindCoordRow(closeInv, () => inv.CloseInventory, v => inv.CloseInventory = v, "btn.closeInv");
         var shop = new SettingRow(SettingRowKind.Coord, _loc.T("btn.shop"), "");
         BindCoordRow(shop, () => inv.ShopButton, v => inv.ShopButton = v, "btn.shop");
-        var invKey = new SettingRow(SettingRowKind.Hotkey, _loc.T("btn.inventory"), "");
-        BindHotkeyRow(invKey, () => inv.InventoryHotkey, v =>
-        {
-            inv.InventoryHotkey = v;
-            _settings.Current.GearSwap.InventoryHotkey = v;
-        }, "util.inv", "btn.inventory");
         var wisdom = new SettingRow(SettingRowKind.Coord, _loc.T("btn.wisdom"), "");
         BindCoordRow(wisdom, () => inv.WisdomTab, v => inv.WisdomTab = v, "btn.wisdom");
-        var skills = new SettingRow(SettingRowKind.Hotkey, _loc.T("btn.skills"), "");
-        BindHotkeyRow(skills, () => inv.SkillsWindowHotkey, v => inv.SkillsWindowHotkey = v, "util.skills", "btn.skills");
 
         var auto = UiFactory.Btn(_loc.T("calib.auto"), BtnKind.Primary);
         auto.Click += (_, _) =>
@@ -267,30 +254,69 @@ internal sealed partial class MainForm
                 auto.Enabled = true;
             }
         };
-        calib.Controls.Add(auto);
-        calib.Controls.Add(firstCell);
-        calib.Controls.Add(firstTab);
-        calib.Controls.Add(closeInv);
-        calib.Controls.Add(shop);
-        calib.Controls.Add(invKey);
-        calib.Controls.Add(wisdom);
-        calib.Controls.Add(skills);
+        var autoBody = UiFactory.VStack();
+        autoBody.Controls.Add(auto);
+        var autoSection = UiFactory.SectionCard(_loc.T("section.calibAuto"), _loc.T("calib.autoLead"), autoBody, out var autoTitle, out var autoLead);
 
-        var section = UiFactory.SectionCard(_loc.T("section.calib"), _loc.T("calib.hint"), calib, out var title, out var subtitle);
+        var manualBody = UiFactory.VStack();
+        manualBody.Controls.Add(firstCell);
+        manualBody.Controls.Add(firstTab);
+        manualBody.Controls.Add(closeInv);
+        manualBody.Controls.Add(shop);
+        manualBody.Controls.Add(wisdom);
+        var manualSection = UiFactory.SectionCard(_loc.T("section.calibManual"), _loc.T("calib.manualLead"), manualBody, out var manualTitle, out var manualLead);
+
+        calib.Controls.Add(autoSection);
+        calib.Controls.Add(manualSection);
+        calib.Controls.Add(BuildGridSettingsSection());
+
+        calib.Visible = false;
+        var fold = BuildCollapsibleBlock(_loc.T("section.calib"), calib, calib);
         _refreshAllLabels += () =>
         {
-            title.Text = _loc.T("section.calib");
-            if (subtitle != null) subtitle.Text = _loc.T("calib.hint");
+            SetCollapsibleTitle(fold, _loc.T("section.calib"));
+            autoTitle.Text = _loc.T("section.calibAuto");
+            if (autoLead != null) autoLead.Text = _loc.T("calib.autoLead");
+            manualTitle.Text = _loc.T("section.calibManual");
+            if (manualLead != null) manualLead.Text = _loc.T("calib.manualLead");
             auto.Text = _loc.T("calib.auto");
             firstCell.LabelText = _loc.T("btn.firstCell");
             firstTab.LabelText = _loc.T("btn.firstTab");
             closeInv.LabelText = _loc.T("btn.closeInv");
             shop.LabelText = _loc.T("btn.shop");
-            invKey.LabelText = _loc.T("btn.inventory");
             wisdom.LabelText = _loc.T("btn.wisdom");
-            skills.LabelText = _loc.T("btn.skills");
         };
-        return section;
+        return fold;
+    }
+
+    /// <summary>Window keys and what runs around a sell. Starts collapsed.</summary>
+    private Control BuildGeneralSettingsFold(InventorySettings inv)
+    {
+        var body = UiFactory.VStack();
+        var invKey = new SettingRow(SettingRowKind.Hotkey, _loc.T("btn.inventory"), "");
+        BindHotkeyRow(invKey, () => inv.InventoryHotkey, v =>
+        {
+            inv.InventoryHotkey = v;
+            _settings.Current.GearSwap.InventoryHotkey = v;
+        }, "util.inv", "btn.inventory");
+        var skills = new SettingRow(SettingRowKind.Hotkey, _loc.T("btn.skills"), "");
+        BindHotkeyRow(skills, () => inv.SkillsWindowHotkey, v => inv.SkillsWindowHotkey = v, "util.skills", "btn.skills");
+        var windows = UiFactory.VStack();
+        windows.Controls.Add(invKey);
+        windows.Controls.Add(skills);
+        var windowsSection = UiFactory.Section(_loc.T("section.windows"), windows, out var windowsTitle);
+        body.Controls.Add(BuildSellLaunchSection(inv));
+        body.Controls.Add(windowsSection);
+        body.Controls.Add(BuildSellExtraSkillSection());
+        body.Visible = false;
+
+        var fold = BuildCollapsibleBlock(_loc.T("section.general"), body, body);
+        _refreshAllLabels += () =>
+        {
+            SetCollapsibleTitle(fold, _loc.T("section.general"));
+            windowsTitle.Text = _loc.T("section.windows");
+        };
+        return fold;
     }
 
     private string LocalizedRarityName(RarityProfile r)
@@ -304,57 +330,54 @@ internal sealed partial class MainForm
             : $"{name} ({_loc.T("rarity.noTemplate")})";
     }
 
-    private Control BuildAdvancedInventorySection()
-    {
-        var body = UiFactory.VStack();
-        body.Visible = false;
-        body.Controls.Add(BuildSellExtraSkillSection());
-        body.Controls.Add(BuildGridSettingsSection());
-
-        var wrap = BuildCollapsibleBlock(_loc.T("section.advanced"), body, body);
-        _refreshAllLabels += () => SetCollapsibleTitle(wrap, _loc.T("section.advanced"));
-        return wrap;
-    }
-
-    private Control BuildChecklistSection()
+    private Control BuildChecklistSection(InventorySettings inv)
     {
         var inner = UiFactory.VStack();
-        var summary = UiFactory.Lbl("", true);
+        var summary = new Label
+        {
+            AutoSize = false,
+            Height = Theme.UiFont.Height * 2 + 8,
+            Font = Theme.UiFont,
+            BackColor = Color.Transparent,
+            Margin = new Padding(2, 4, 2, 4)
+        };
         var itemsHost = UiFactory.VStack();
         inner.Controls.Add(summary);
         inner.Controls.Add(itemsHost);
+        inner.Controls.Add(BuildGeneralSettingsFold(inv));
+        inner.Controls.Add(BuildSellCalibrationSection(inv));
 
         void Refresh()
         {
-            var inv = _settings.Current.Inventory;
+            var current = _settings.Current.Inventory;
             var missing = new List<(string Key, Action Fix)>();
-            if (inv.FirstCell == null)
+            if (current.FirstCell == null)
                 missing.Add(("checklist.firstCell", () =>
                 {
-                    PickCoord(v => inv.FirstCell = v, () => { }, Math.Max(16, inv.Grid.CellSize), true);
-                    Refresh();
+                    PickCoord(v => current.FirstCell = v, () => { }, Math.Max(16, current.Grid.CellSize), true);
+                    _refreshAllLabels?.Invoke();
                 }));
-            if (inv.CloseInventory == null)
+            if (current.CloseInventory == null)
                 missing.Add(("checklist.closeInv", () =>
                 {
-                    PickCoord(v => inv.CloseInventory = v, () => { }, Math.Max(16, inv.Grid.CrosshairSize), false);
-                    Refresh();
+                    PickCoord(v => current.CloseInventory = v, () => { }, GridSettings.PickerSize, false);
+                    _refreshAllLabels?.Invoke();
                 }));
-            if (inv.FirstTab == null)
+            if (current.FirstTab == null)
                 missing.Add(("checklist.firstTab", () =>
                 {
-                    PickCoord(v => inv.FirstTab = v, () => { }, Math.Max(16, inv.Grid.CrosshairSize), false);
-                    Refresh();
+                    PickCoord(v => current.FirstTab = v, () => { }, GridSettings.PickerSize, false);
+                    _refreshAllLabels?.Invoke();
                 }));
-            if (inv.ShopButton == null)
+            if (current.ShopButton == null)
                 missing.Add(("checklist.shop", () =>
                 {
-                    PickCoord(v => inv.ShopButton = v, () => { }, Math.Max(16, inv.Grid.CrosshairSize), false);
-                    Refresh();
+                    PickCoord(v => current.ShopButton = v, () => { }, GridSettings.PickerSize, false);
+                    _refreshAllLabels?.Invoke();
                 }));
-            if (string.IsNullOrWhiteSpace(inv.SellAllHotkey))
+            if (string.IsNullOrWhiteSpace(current.SellAllHotkey))
                 missing.Add(("checklist.sellHotkey", () => { }));
-            if (!inv.SelectedTabs.Any(t => t))
+            if (!current.SelectedTabs.Any(t => t))
                 missing.Add(("checklist.tabs", () => { }));
 
             itemsHost.Controls.Clear();
@@ -365,7 +388,7 @@ internal sealed partial class MainForm
             }
             else
             {
-                summary.Text = _loc.Tf("checklist.incomplete", missing.Count);
+                summary.Text = _loc.T("checklist.incomplete");
                 summary.ForeColor = Theme.Accent;
                 foreach (var (key, fix) in missing)
                 {
@@ -465,20 +488,7 @@ internal sealed partial class MainForm
             g.ShowGrid = show.Checked;
             Persist(immediate: true, hotkeys: false, grid: true);
         };
-        var fast = UiFactory.Check(_loc.T("grid.fast"), g.FastFirstScan);
-        fast.CheckedChanged += (_, _) => { g.FastFirstScan = fast.Checked; Persist(hotkeys: false, grid: true); };
-        var checks = new FlowLayoutPanel
-        {
-            FlowDirection = FlowDirection.LeftToRight,
-            WrapContents = true,
-            AutoSize = true,
-            Height = 36,
-            BackColor = Color.Transparent,
-            Margin = new Padding(0, 0, 0, 6)
-        };
-        checks.Controls.Add(show);
-        checks.Controls.Add(fast);
-        body.Controls.Add(checks);
+        body.Controls.Add(show);
 
         void NumRow(string key, Func<int> get, Action<int> set, int min, int max)
         {
@@ -490,7 +500,7 @@ internal sealed partial class MainForm
                 set((int)num.Value);
                 Persist(hotkeys: false, grid: true);
             };
-            body.Controls.Add(UiFactory.FieldRow(label, num, 220));
+            body.Controls.Add(UiFactory.FieldRow(label, num, 280));
             _refreshAllLabels += () =>
             {
                 label.Text = _loc.T(key);
@@ -504,20 +514,26 @@ internal sealed partial class MainForm
         }
 
         NumRow("grid.cell", () => g.CellSize, v => g.CellSize = v, 16, 220);
-        NumRow("grid.tab", () => g.TabMarkerSize, v => g.TabMarkerSize = v, 8, 96);
         NumRow("grid.gapx", () => g.GapX, v => g.GapX = v, 0, 40);
         NumRow("grid.gapy", () => g.GapY, v => g.GapY = v, 0, 40);
         NumRow("grid.tabx", () => g.TabOffsetX, v => g.TabOffsetX = v, 10, 200);
-        NumRow("grid.cross", () => g.CrosshairSize, v => g.CrosshairSize = v, 8, 80);
         NumRow("grid.scan", () => g.ScanLevel, v => g.ScanLevel = v, 1, 2);
+        var scanHint = new WrapLabel
+        {
+            Text = _loc.T("grid.scanHint"),
+            ForeColor = Theme.TextMuted,
+            Font = Theme.UiFontSmall,
+            Margin = new Padding(0, 0, 0, 8),
+            Padding = new Padding(2, 0, 8, 0)
+        };
+        body.Controls.Add(scanHint);
         NumRow("grid.sellDelay", () => g.SellClickDelayMs, v => g.SellClickDelayMs = v, 8, 500);
-        NumRow("grid.tol", () => g.ColorTolerance, v => g.ColorTolerance = v, 0, 80);
 
         var section = UiFactory.Section(_loc.T("section.grid"), body, out var title);
         _refreshAllLabels += () =>
         {
             show.Text = _loc.T("grid.show");
-            fast.Text = _loc.T("grid.fast");
+            scanHint.Text = _loc.T("grid.scanHint");
             title.Text = _loc.T("section.grid");
             if (show.Checked == g.ShowGrid) return;
             var was = _suppressUiEvents;

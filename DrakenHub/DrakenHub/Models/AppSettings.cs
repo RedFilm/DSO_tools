@@ -67,6 +67,9 @@ public sealed class InventorySettings
 
 public sealed class GridSettings
 {
+    /// <summary>Red marker while picking a screen point. The saved point is the cursor, not this size.</summary>
+    public const int PickerSize = 24;
+
     public bool ShowGrid { get; set; }
     public bool FastFirstScan { get; set; } = true;
     public int CellSize { get; set; } = 48;

@@ -33,7 +33,7 @@ internal sealed partial class MainForm : Form
     private readonly ToolTip _toolTips = new();
     private NotifyIcon? _tray;
 
-    private string _activePage = "play";
+    private string _activePage = "inventory";
     private string _inventorySub = "sell";
     private GridOverlayForm? _gridOverlay;
     private bool _hidden;
@@ -133,7 +133,7 @@ internal sealed partial class MainForm : Form
         BuildChrome();
         BuildTray();
         BuildPages();
-        ShowPage("play");
+        ShowPage("inventory");
 
         _hotkeys.Attach(this);
         _mouse.Attach(this);
@@ -678,7 +678,7 @@ internal sealed partial class MainForm : Form
         row.Activated += (_, _) => PickCoord(
             setter,
             Refresh,
-            sizeProvider?.Invoke() ?? Math.Max(16, _settings.Current.Inventory.Grid.CrosshairSize),
+            sizeProvider?.Invoke() ?? GridSettings.PickerSize,
             useOrigin);
         _refreshAllLabels += Refresh;
     }
@@ -713,7 +713,7 @@ internal sealed partial class MainForm : Form
         void Refresh() => button.Text = FormatCoordLabel(labelKey, getter());
         Refresh();
         _toolTips.SetToolTip(button, _loc.T("tt.coord"));
-        button.Click += (_, _) => PickCoord(setter, Refresh, size ?? Math.Max(16, _settings.Current.Inventory.Grid.CrosshairSize), useOrigin: false);
+        button.Click += (_, _) => PickCoord(setter, Refresh, size ?? GridSettings.PickerSize, useOrigin: false);
         _refreshAllLabels += () =>
         {
             Refresh();
@@ -840,7 +840,7 @@ internal sealed partial class MainForm : Form
         var gridWasVisible = _gridOverlay is { Visible: true };
         if (_gridOverlay != null) _gridOverlay.Visible = false;
 
-        var size = inv.Grid.CrosshairSize;
+        var size = GridSettings.PickerSize;
         using var overlay = new OverlayForm(size, rectangle: false, hintText: _loc.T("overlay.hint"));
         Hide();
         overlay.ShowDialog();

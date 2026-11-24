@@ -962,13 +962,44 @@ internal sealed class DarkCheckBox : CheckBox
             Size = MeasurePreferred();
     }
 
+    protected override void OnHandleCreated(EventArgs e)
+    {
+        base.OnHandleCreated(e);
+        if (!AutoSize) return;
+        Size = MeasurePreferred();
+        Parent?.PerformLayout();
+    }
+
+    protected override void OnDpiChangedAfterParent(EventArgs e)
+    {
+        base.OnDpiChangedAfterParent(e);
+        if (!AutoSize) return;
+        Size = MeasurePreferred();
+        Parent?.PerformLayout();
+    }
+
     private Size MeasurePreferred()
     {
         var text = string.IsNullOrEmpty(Text) ? " " : Text;
-        var textSize = TextRenderer.MeasureText(text, Font ?? Theme.UiFont, new Size(int.MaxValue, 28),
-            TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
-        var w = 2 + BoxSize + BoxGap + textSize.Width + 8;
-        return new Size(Math.Max(40, w), 28);
+        var font = Font ?? Theme.UiFont;
+        var flags = TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.SingleLine | TextFormatFlags.NoPadding;
+        // Measure on this control's surface. TextRenderer without a device context uses another DPI
+        // and the caption is then drawn wider than the box (the label ends in "...").
+        int textW;
+        if (IsHandleCreated)
+        {
+            using var g = CreateGraphics();
+            textW = TextRenderer.MeasureText(g, text, font, new Size(int.MaxValue, int.MaxValue), flags).Width;
+        }
+        else
+        {
+            textW = TextRenderer.MeasureText(text, font, new Size(int.MaxValue, int.MaxValue), flags).Width;
+        }
+
+        var slack = Math.Max(14, font.Height / 2);
+        var w = 2 + BoxSize + BoxGap + textW + slack;
+        var h = Math.Max(28, font.Height + 10);
+        return new Size(Math.Max(40, w), h);
     }
 
     protected override void SetBoundsCore(int x, int y, int width, int height, BoundsSpecified specified)
@@ -1020,8 +1051,12 @@ internal sealed class DarkCheckBox : CheckBox
         var textX = box.Right + BoxGap;
         var textBounds = new Rectangle(textX, 0, Math.Max(0, Width - textX - 2), Height);
         var textColor = Enabled ? ForeColor : Theme.TextMuted;
-        TextRenderer.DrawText(g, Text, Font, textBounds, textColor,
-            TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis);
+        var flags = TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding;
+        // A sized-to-text box must not replace the tail with "...". Fixed-width rows still ellipsize.
+        flags |= AutoSize
+            ? TextFormatFlags.SingleLine
+            : TextFormatFlags.EndEllipsis | TextFormatFlags.SingleLine;
+        TextRenderer.DrawText(g, Text, Font, textBounds, textColor, flags);
 
         if (Focused)
         {
@@ -1040,6 +1075,55 @@ internal sealed class DarkCheckBox : CheckBox
     {
         base.OnCheckedChanged(e);
         Invalidate();
+    }
+}
+
+/// <summary>Note that wraps to the width the page stack assigns. Height stays within a few lines.</summary>
+internal sealed class WrapLabel : Label
+{
+    public WrapLabel()
+    {
+        AutoSize = false;
+        AutoEllipsis = false;
+        UseCompatibleTextRendering = false;
+        BackColor = Color.Transparent;
+    }
+
+    /// <summary>
+    /// Lock the note to the stack width. A narrow intermediate width would otherwise
+    /// wrap one letter per line and push the rest of the section far down.
+    /// </summary>
+    public void ApplyWidth(int width)
+    {
+        var size = new Size(Math.Max(1, width), HeightFor(width));
+        MinimumSize = Size.Empty;
+        MaximumSize = Size.Empty;
+        Size = size;
+        MinimumSize = size;
+        MaximumSize = size;
+    }
+
+    public override Size GetPreferredSize(Size proposedSize)
+    {
+        var w = Width > 1 ? Width : Math.Max(1, proposedSize.Width);
+        return new Size(w, HeightFor(w));
+    }
+
+    private int HeightFor(int width)
+    {
+        var font = Font ?? Theme.UiFontSmall;
+        var line = Math.Max(1, font.Height);
+        var contentW = Math.Max(160, width - Padding.Horizontal);
+        if (string.IsNullOrEmpty(Text))
+            return line + Padding.Vertical + 2;
+
+        var flags = TextFormatFlags.WordBreak | TextFormatFlags.TextBoxControl | TextFormatFlags.NoPadding
+            | TextFormatFlags.Left | TextFormatFlags.Top;
+        var size = TextRenderer.MeasureText(Text, font, new Size(contentW, line * 6), flags);
+        var h = size.Height;
+        if (h < line || h > line * 6)
+            h = line * 2;
+        return h + Padding.Vertical + 4;
     }
 }
 

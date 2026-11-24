@@ -1,3 +1,5 @@
+using DrakenHub.Core;
+
 namespace DrakenHub.UI;
 
 internal sealed partial class MainForm
@@ -28,8 +30,12 @@ internal sealed partial class MainForm
         Control? deleteControl = null)
     {
         var startExpanded = body.Visible;
-        const int headerH = 38;
+        var headerH = Math.Max(36, Theme.UiFont.Height + 14);
         var headerBtn = UiFactory.Btn((startExpanded ? "▾ " : "▸ ") + title, BtnKind.Neutral, headerH);
+        headerBtn.Font = Theme.UiFontValue;
+        headerBtn.BackColor = Theme.Bg;
+        headerBtn.ForeColor = Theme.Text;
+        headerBtn.FlatAppearance.BorderColor = Theme.HeaderLine;
         headerBtn.TextAlign = ContentAlignment.MiddleLeft;
 
         Control headerRow;

@@ -140,6 +140,8 @@ internal static class UiFactory
 
                 if (c is WrapGrid grid)
                     grid.ApplyOuterSize(width, MeasureWrap(c, width));
+                else if (c is WrapLabel note)
+                    note.ApplyWidth(width);
                 else
                     c.Width = width;
             }
@@ -273,18 +275,18 @@ internal static class UiFactory
     private static void LayoutSectionHeader(Panel panel, int width)
     {
         if (panel.Tag is not SectionTag tag) return;
-        var textW = Math.Max(80, width - 28);
+        var textW = Math.Max(80, width - 32);
         var titleH = MeasureWrapped(tag.Title.Text, tag.Title.Font, textW);
-        tag.Title.SetBounds(14, 10, textW, titleH);
-        var y = 10 + titleH + 6;
+        tag.Title.SetBounds(16, 9, textW, titleH);
+        var y = 9 + titleH + 8;
         if (tag.Subtitle != null)
         {
             var subH = MeasureWrapped(tag.Subtitle.Text, tag.Subtitle.Font, textW);
-            tag.Subtitle.SetBounds(14, y, textW, subH);
+            tag.Subtitle.SetBounds(16, y, textW, subH);
             y += subH + 8;
         }
 
-        tag.HeaderBottom = y;
+        tag.HeaderBottom = y + 4;
     }
 
     private static int MeasureWrapped(string text, Font font, int width)
@@ -517,10 +519,10 @@ internal static class UiFactory
         {
             Text = title,
             AutoSize = false,
-            Location = new Point(14, 10),
+            Location = new Point(16, 9),
             ForeColor = Theme.Text,
             Font = Theme.UiFontValue,
-            BackColor = Theme.Panel,
+            BackColor = Theme.Header,
             AutoEllipsis = true
         };
 
@@ -529,14 +531,24 @@ internal static class UiFactory
         panel.Controls.Add(inner);
         panel.Controls.Add(titleLabel);
         titleLabel.BringToFront();
-        panel.Tag = new SectionTag { Inner = inner, Title = titleLabel, HeaderBottom = 36 };
+        panel.Tag = new SectionTag { Inner = inner, Title = titleLabel, HeaderBottom = 44 };
 
         panel.Paint += (_, e) =>
         {
+            var g = e.Graphics;
+            var w = panel.ClientSize.Width;
+            var h = panel.ClientSize.Height;
+            var band = 36;
+            if (panel.Tag is SectionTag tag)
+                band = Math.Max(32, tag.HeaderBottom - 4);
+            using (var head = new SolidBrush(Theme.Header))
+                g.FillRectangle(head, 0, 0, w, band);
+            using (var line = new SolidBrush(Theme.HeaderLine))
+                g.FillRectangle(line, 0, band - 2, w, 2);
             using (var bg = new SolidBrush(Theme.Panel))
-                e.Graphics.FillRectangle(bg, panel.ClientRectangle);
+                g.FillRectangle(bg, 0, band, w, Math.Max(0, h - band));
             using var pen = new Pen(Theme.Border);
-            e.Graphics.DrawRectangle(pen, 0, 0, panel.ClientSize.Width - 1, panel.ClientSize.Height - 1);
+            g.DrawRectangle(pen, 0, 0, w - 1, h - 1);
         };
 
         return panel;
@@ -636,7 +648,7 @@ internal static class UiFactory
             AutoSize = false,
             ForeColor = Theme.TextMuted,
             Font = Theme.UiFontSmall,
-            BackColor = Theme.Panel,
+            BackColor = Theme.Header,
             AutoEllipsis = false
         };
         if (panel.Tag is SectionTag tag)

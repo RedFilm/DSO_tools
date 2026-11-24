@@ -26,6 +26,10 @@ internal static class Theme
     public static readonly Color Button = Color.FromArgb(42, 46, 52);
     public static readonly Color ButtonBorder = Color.FromArgb(62, 66, 74);
 
+    /// <summary>Cool cap for a section title. Lighter than the card body, not the warm accent.</summary>
+    public static readonly Color Header = Color.FromArgb(54, 58, 66);
+    public static readonly Color HeaderLine = Color.FromArgb(118, 126, 138);
+
     /// <summary>Muted warm accent — less saturated than pure gold.</summary>
     public static readonly Color Accent = Color.FromArgb(186, 152, 112);
     public static readonly Color AccentDim = Color.FromArgb(52, 44, 34);
