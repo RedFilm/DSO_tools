@@ -38,11 +38,12 @@ internal sealed class ColorScanService(InputService input)
 
     public List<(int Row, int Col, Point Center)> FindMatches(InventorySettings inv, bool includeOtherItems, GridSnapshot? snapshot)
     {
+        var icons = includeOtherItems ? ItemIconMatcher.Prepare(inv) : ItemIconMatcher.Set.Empty;
         var result = new List<(int, int, Point)>();
         for (var row = 0; row < InventoryLayout.Rows; row++)
         for (var col = 0; col < InventoryLayout.Columns; col++)
         {
-            if (!TryFindClickPoint(inv, row, col, includeOtherItems, snapshot, out var center))
+            if (!TryFindClickPoint(inv, row, col, icons, snapshot, out var center))
                 continue;
             result.Add((row, col, center));
         }
@@ -50,15 +51,26 @@ internal sealed class ColorScanService(InputService input)
     }
 
     /// <summary>
-    /// Searches the cell ROI for an enabled rarity "?" template (blob + shape),
-    /// otherwise falls back to OtherItems multi-point profiles.
-    /// Returns the click center of the best match.
+    /// Searches the cell for an enabled rarity "?" template, then for a user gem icon.
+    /// Returns the click center of the match.
     /// </summary>
     public bool TryFindClickPoint(
         InventorySettings inv,
         int row,
         int col,
         bool includeOtherItems,
+        GridSnapshot? snapshot,
+        out Point center)
+    {
+        var icons = includeOtherItems ? ItemIconMatcher.Prepare(inv) : ItemIconMatcher.Set.Empty;
+        return TryFindClickPoint(inv, row, col, icons, snapshot, out center);
+    }
+
+    private bool TryFindClickPoint(
+        InventorySettings inv,
+        int row,
+        int col,
+        ItemIconMatcher.Set icons,
         GridSnapshot? snapshot,
         out Point center)
     {
@@ -70,7 +82,7 @@ internal sealed class ColorScanService(InputService input)
         if (TryFindQuestionMark(inv, origin.Value, cellSize, snapshot, out center))
             return true;
 
-        if (includeOtherItems && TryMatchOtherItems(inv, origin.Value, snapshot, out center))
+        if (icons.Icons.Length > 0 && icons.TryMatch(origin.Value, snapshot, input, out center))
             return true;
 
         return false;
@@ -206,60 +218,20 @@ internal sealed class ColorScanService(InputService input)
         return hits;
     }
 
-    private bool TryMatchOtherItems(
-        InventorySettings inv,
-        Point origin,
-        GridSnapshot? snapshot,
-        out Point center)
-    {
-        center = default;
-        foreach (var item in inv.OtherItems)
-        {
-            if (!item.Enabled || item.Points.Count == 0) continue;
-            if (!Matches(origin, item.Points, inv.Grid.ColorTolerance, snapshot))
-                continue;
-
-            // Click near the average of matched profile points.
-            var ax = origin.X + (int)item.Points.Average(p => p.OffsetX);
-            var ay = origin.Y + (int)item.Points.Average(p => p.OffsetY);
-            center = new Point(ax, ay);
-            return true;
-        }
-        return false;
-    }
-
-    /// <summary>One screen grab for the whole inventory grid (+ OtherItems point offsets).</summary>
+    /// <summary>One screen grab for the whole inventory grid.</summary>
     public static GridSnapshot? CaptureGrid(InventorySettings inv)
     {
         if (inv.FirstCell == null) return null;
         var g = inv.Grid;
-        var maxOx = 0;
-        var maxOy = 0;
-        var minOx = 0;
-        var minOy = 0;
-
-        void Accrue(IEnumerable<RelativeColorPoint> points)
-        {
-            foreach (var p in points)
-            {
-                if (p.OffsetX > maxOx) maxOx = p.OffsetX;
-                if (p.OffsetY > maxOy) maxOy = p.OffsetY;
-                if (p.OffsetX < minOx) minOx = p.OffsetX;
-                if (p.OffsetY < minOy) minOy = p.OffsetY;
-            }
-        }
-
-        foreach (var item in inv.OtherItems.Where(x => x.Enabled))
-            Accrue(item.Points);
-
         var x0 = InventoryLayout.CellOffset(0, g.CellSize, g.GapX);
         var y0 = InventoryLayout.CellOffset(0, g.CellSize, g.GapY);
         var farX = InventoryLayout.CellOffset(InventoryLayout.Columns - 1, g.CellSize, g.GapX) + g.CellSize;
         var farY = InventoryLayout.CellOffset(InventoryLayout.Rows - 1, g.CellSize, g.GapY) + g.CellSize;
-        var left = inv.FirstCell.X + Math.Min(x0, minOx) - 2;
-        var top = inv.FirstCell.Y + Math.Min(y0, minOy) - 2;
-        var width = Math.Max(1, farX - Math.Min(x0, minOx) + Math.Max(0, maxOx) + 4);
-        var height = Math.Max(1, farY - Math.Min(y0, minOy) + Math.Max(0, maxOy) + 4);
+        const int pad = 6;
+        var left = inv.FirstCell.X + x0 - pad;
+        var top = inv.FirstCell.Y + y0 - pad;
+        var width = Math.Max(1, farX - x0 + pad * 2);
+        var height = Math.Max(1, farY - y0 + pad * 2);
         var bounds = new Rectangle(left, top, width, height);
 
         var bmp = new Bitmap(width, height, PixelFormat.Format32bppArgb);
@@ -269,40 +241,11 @@ internal sealed class ColorScanService(InputService input)
         return new GridSnapshot(bmp, bounds);
     }
 
-    private bool Matches(Point origin, List<RelativeColorPoint> points, int tolerance, GridSnapshot? snapshot)
-    {
-        if (points.Count == 0) return false;
-        var need = (points.Count + 1) / 2;
-        var hits = 0;
-        for (var i = 0; i < points.Count; i++)
-        {
-            var p = points[i];
-            var c = Sample(origin.X + p.OffsetX, origin.Y + p.OffsetY, snapshot);
-            var expected = Color.FromArgb(p.ColorArgb);
-            if (ColorDistance(c, expected) <= tolerance)
-                hits++;
-
-            var remaining = points.Count - i - 1;
-            if (hits >= need) return true;
-            if (hits + remaining < need) return false;
-        }
-
-        return hits >= need;
-    }
-
     private Color Sample(int x, int y, GridSnapshot? snapshot)
     {
         if (snapshot != null && snapshot.TryGetPixel(x, y, out var c))
             return c;
         return input.GetPixel(x, y);
-    }
-
-    private static int ColorDistance(Color a, Color b)
-    {
-        var dr = a.R - b.R;
-        var dg = a.G - b.G;
-        var db = a.B - b.B;
-        return (int)Math.Sqrt(dr * dr + dg * dg + db * db);
     }
 }
 
@@ -342,6 +285,23 @@ internal sealed class GridSnapshot : IDisposable
 
         var i = y * _stride + x * 4;
         color = Color.FromArgb(_buffer[i + 2], _buffer[i + 1], _buffer[i]);
+        return true;
+    }
+
+    public bool TryGetRgb(int screenX, int screenY, out byte r, out byte g, out byte b)
+    {
+        var x = screenX - _bounds.X;
+        var y = screenY - _bounds.Y;
+        if ((uint)x >= (uint)_bmp.Width || (uint)y >= (uint)_bmp.Height)
+        {
+            r = g = b = 0;
+            return false;
+        }
+
+        var i = y * _stride + x * 4;
+        b = _buffer[i];
+        g = _buffer[i + 1];
+        r = _buffer[i + 2];
         return true;
     }
 

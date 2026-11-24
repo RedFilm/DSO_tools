@@ -27,6 +27,42 @@ internal sealed class QuestionMarkPreview : Control
         => QuestionMarkTemplates.DrawPreview(e.Graphics, ClientRectangle, _color, _available);
 }
 
+/// <summary>Thumbnail of a captured gem. Transparent pixels stay dark.</summary>
+internal sealed class ItemIconPreview : Control
+{
+    private readonly Bitmap? _bmp;
+
+    public ItemIconPreview(string? pngBase64)
+    {
+        _bmp = ItemIconMatcher.DecodePreview(pngBase64);
+        SetStyle(
+            ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer |
+            ControlStyles.ResizeRedraw | ControlStyles.UserPaint, true);
+        Size = new Size(36, 32);
+        Margin = Padding.Empty;
+        BackColor = Theme.InputBg;
+    }
+
+    protected override void Dispose(bool disposing)
+    {
+        if (disposing) _bmp?.Dispose();
+        base.Dispose(disposing);
+    }
+
+    protected override void OnPaint(PaintEventArgs e)
+    {
+        var g = e.Graphics;
+        using (var bg = new SolidBrush(Theme.InputBg))
+            g.FillRectangle(bg, ClientRectangle);
+        using (var pen = new Pen(Theme.Border))
+            g.DrawRectangle(pen, 0, 0, Width - 1, Height - 1);
+        if (_bmp == null) return;
+        g.InterpolationMode = InterpolationMode.NearestNeighbor;
+        g.PixelOffsetMode = PixelOffsetMode.Half;
+        g.DrawImage(_bmp, new Rectangle(2, 2, Width - 4, Height - 4));
+    }
+}
+
 /// <summary>Compact digit toggle for inventory tabs 1–9.</summary>
 internal sealed class TabDigitToggle : Control
 {

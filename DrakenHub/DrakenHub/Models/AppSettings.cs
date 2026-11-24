@@ -103,6 +103,14 @@ public sealed class CustomItemProfile
     public string Id { get; set; } = Guid.NewGuid().ToString("N");
     public string Name { get; set; } = "Item";
     public bool Enabled { get; set; } = true;
+
+    /// <summary>Base64 PNG of the colored stone. Transparent pixels are ignored.</summary>
+    public string? IconPng { get; set; }
+
+    /// <summary>Cell size this icon was captured at.</summary>
+    public int IconCellSize { get; set; }
+
+    /// <summary>Legacy color points. Matching uses <see cref="IconPng"/>.</summary>
     public List<RelativeColorPoint> Points { get; set; } = [];
 }
 

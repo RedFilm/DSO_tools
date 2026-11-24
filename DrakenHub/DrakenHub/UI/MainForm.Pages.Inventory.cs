@@ -621,7 +621,13 @@ internal sealed partial class MainForm
         void Rebuild()
         {
             list.SuspendLayout();
-            list.Controls.Clear();
+            for (var i = list.Controls.Count - 1; i >= 0; i--)
+            {
+                var old = list.Controls[i];
+                list.Controls.RemoveAt(i);
+                old.Dispose();
+            }
+
             foreach (var item in _settings.Current.Inventory.OtherItems.ToList())
             {
                 var it = item;
@@ -631,61 +637,43 @@ internal sealed partial class MainForm
                 var name = UiFactory.Tb(it.Name);
                 name.TextChanged += (_, _) => { it.Name = name.Text; enabled.Text = name.Text; };
                 name.Leave += (_, _) => Persist();
-                var add = UiFactory.Btn(_loc.T("btn.addPoint"), BtnKind.Neutral);
-                add.Click += (_, _) => { AddColorPoint(it.Points); Rebuild(); UiFactory.Relayout(list); };
-                var clear = UiFactory.Btn(_loc.T("btn.clear"), BtnKind.Neutral);
-                clear.Click += (_, _) =>
+                var preview = new ItemIconPreview(it.IconPng);
+                var capture = UiFactory.Btn(_loc.T("btn.captureItem"), BtnKind.Neutral);
+                capture.Click += (_, _) =>
                 {
-                    if (it.Points.Count == 0) return;
-                    if (!ConfirmAction("confirm.clear")) return;
-                    it.Points.Clear();
-                    Persist(grid: true);
-                    Rebuild();
-                    UiFactory.Relayout(list);
+                    if (!CaptureItemIcon(it)) return;
+                    RefreshList();
                 };
+                _toolTips.SetToolTip(capture, _loc.T("item.captureHint"));
                 var removeItem = MakeDeleteButton(() =>
                 {
                     _settings.Current.Inventory.OtherItems.Remove(it);
                     Persist(grid: true);
-                    Rebuild();
-                    UiFactory.Relayout(list);
+                    RefreshList();
                 });
                 block.Controls.Add(UiFactory.ActionRow(
-                    (enabled, 120), (name, 160), (add, 0), (clear, 0), (removeItem, removeItem.Width)));
-
-                for (var i = 0; i < it.Points.Count; i++)
-                {
-                    var index = i;
-                    var point = it.Points[index];
-                    var caption = UiFactory.Lbl(PointCaption(index, point));
-                    caption.AutoSize = false;
-                    caption.TextAlign = ContentAlignment.MiddleLeft;
-                    var removePoint = MakeDeleteButton(() =>
-                    {
-                        if (index < 0 || index >= it.Points.Count) return;
-                        it.Points.RemoveAt(index);
-                        Persist(grid: true);
-                        Rebuild();
-                        UiFactory.Relayout(list);
-                    });
-                    _refreshAllLabels += () =>
-                    {
-                        if (!caption.IsDisposed)
-                            caption.Text = PointCaption(index, point);
-                    };
-                    block.Controls.Add(UiFactory.ActionRow((caption, 0), (removePoint, removePoint.Width)));
-                }
-
+                    (enabled, 120), (name, 150), (preview, 36), (capture, 0), (removeItem, removeItem.Width)));
                 _refreshAllLabels += () =>
                 {
-                    if (add.IsDisposed) return;
-                    add.Text = _loc.T("btn.addPoint");
-                    clear.Text = _loc.T("btn.clear");
+                    if (capture.IsDisposed) return;
+                    capture.Text = _loc.T("btn.captureItem");
+                    _toolTips.SetToolTip(capture, _loc.T("item.captureHint"));
                 };
                 list.Controls.Add(block);
             }
             list.ResumeLayout(false);
             UiFactory.Relayout(list);
+        }
+
+        void RefreshList()
+        {
+            if (!list.IsHandleCreated)
+            {
+                Rebuild();
+                return;
+            }
+
+            list.BeginInvoke(new Action(Rebuild));
         }
 
         var addItem = UiFactory.Btn(_loc.T("btn.addItem"), BtnKind.Neutral, 28);
@@ -703,9 +691,6 @@ internal sealed partial class MainForm
         _refreshAllLabels += () => addItem.Text = _loc.T("btn.addItem");
         return wrap;
     }
-
-    private string PointCaption(int index, RelativeColorPoint point) =>
-        $"{_loc.Tf("point.n", index + 1)}  ({point.OffsetX}, {point.OffsetY})";
 
     private Panel BuildSmeltSubPage()
     {

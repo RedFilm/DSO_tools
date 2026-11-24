@@ -824,32 +824,67 @@ internal sealed partial class MainForm : Form
         };
     }
 
-    private void AddColorPoint(List<RelativeColorPoint> points)
+    /// <summary>
+    /// Click a filled cell and store its stone. The grid overlay is hidden so its red
+    /// strokes are not part of the picture, and the cursor is parked off the cell first.
+    /// </summary>
+    private bool CaptureItemIcon(CustomItemProfile item)
     {
-        if (_settings.Current.Inventory.FirstCell == null)
+        var inv = _settings.Current.Inventory;
+        if (inv.FirstCell == null)
         {
             MessageBox.Show(_loc.T("need.firstCell"), _loc.T("notify"));
-            return;
+            return false;
         }
 
-        var size = _settings.Current.Inventory.Grid.CrosshairSize;
+        var gridWasVisible = _gridOverlay is { Visible: true };
+        if (_gridOverlay != null) _gridOverlay.Visible = false;
+
+        var size = inv.Grid.CrosshairSize;
         using var overlay = new OverlayForm(size, rectangle: false, hintText: _loc.T("overlay.hint"));
         Hide();
         overlay.ShowDialog();
-        Show();
-        if (overlay.Result == null) return;
 
-        var inv = _settings.Current.Inventory;
-        var cell = InventoryLayout.PointToCell(inv, overlay.Result.Value) ?? GuessCellFromPoint(overlay.Result.Value);
-        var origin = InventoryLayout.CellOrigin(inv, cell.Row - 1, cell.Col - 1) ?? inv.FirstCell.AsPoint;
-        var color = _input.GetPixel(overlay.Result.Value.X, overlay.Result.Value.Y);
-        points.Add(new RelativeColorPoint
+        if (overlay.Result == null)
         {
-            OffsetX = overlay.Result.Value.X - origin.X,
-            OffsetY = overlay.Result.Value.Y - origin.Y,
-            ColorArgb = color.ToArgb()
-        });
+            Show();
+            if (gridWasVisible && _gridOverlay != null)
+                _gridOverlay.Visible = true;
+            return false;
+        }
+
+        var cell = InventoryLayout.PointToCell(inv, overlay.Result.Value);
+        var origin = cell == null ? (Point?)null : InventoryLayout.CellOrigin(inv, cell.Row - 1, cell.Col - 1);
+        if (origin == null)
+        {
+            Show();
+            if (gridWasVisible && _gridOverlay != null)
+                _gridOverlay.Visible = true;
+            MessageBox.Show(_loc.T("item.captureMiss"), _loc.T("notify"), MessageBoxButtons.OK, MessageBoxIcon.Information);
+            return false;
+        }
+
+        var click = overlay.Result.Value;
+        _input.MoveTo(8, 8);
+        Thread.Sleep(80);
+        var ok = ItemIconMatcher.TryCapture(origin.Value, inv.Grid.CellSize, out var png);
+        _input.MoveTo(click);
+        Show();
+        if (gridWasVisible && _gridOverlay != null)
+            _gridOverlay.Visible = true;
+
+        if (!ok)
+        {
+            MessageBox.Show(_loc.T("item.captureFail"), _loc.T("notify"), MessageBoxButtons.OK, MessageBoxIcon.Information);
+            return false;
+        }
+
+        item.IconPng = png;
+        item.IconCellSize = inv.Grid.CellSize;
+        item.Points.Clear();
         Persist(immediate: true, hotkeys: false, grid: true);
+        SetStatusMessage(_loc.T("item.captureOk"));
+        return true;
     }
 
     private bool ConfirmAction(string messageKey) =>

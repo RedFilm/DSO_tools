@@ -98,14 +98,6 @@ internal static class InventoryLayout
             }
         }
 
-        if (inv.FirstCell != null)
-        {
-            // OtherItems still use manual color points; rarities use built-in "?" templates.
-            foreach (var item in inv.OtherItems.Where(i => i.Enabled))
-            foreach (var p in item.Points)
-                samples.Add(new Point(inv.FirstCell.X + p.OffsetX, inv.FirstCell.Y + p.OffsetY));
-        }
-
         return (cells, tabs, samples);
     }
 }
