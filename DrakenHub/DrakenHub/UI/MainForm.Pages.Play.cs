@@ -60,7 +60,7 @@ internal sealed partial class MainForm
                         ? _loc.T(entry.LabelKey)
                         : entry.LabelOverride;
                     var key = KeyNames.Parse(entry.KeyName);
-                    var display = key == Keys.None ? _loc.T("not.set") : KeyNames.Display(entry.KeyName);
+                    var display = key == Keys.None ? _loc.T("not.assigned") : KeyNames.Display(entry.KeyName);
                     var conflict = entry.IsConflict;
                     if (conflict)
                         display += " · " + _loc.T("bind.conflict");
@@ -81,6 +81,7 @@ internal sealed partial class MainForm
                             _refreshBindingMap?.Invoke();
                         });
                     };
+                    row.SetTrailing(CreateHotkeyClear(captured.Assign, () => { }), 28);
 
                     _playBindingList.Controls.Add(row);
                 }

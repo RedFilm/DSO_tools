@@ -142,7 +142,9 @@ internal sealed class SettingRow : Panel
     {
         const int iconSlot = 36;
         var valueW = Math.Max(72, TextRenderer.MeasureText(_value.Text, _value.Font).Width + 10);
-        if (_trailing != null)
+        // A wide extra control (tab list) must not be pushed off the row.
+        // A narrow one (clear) leaves the key name at its own width.
+        if (_trailing != null && _trailingWidth > 40)
             valueW = Math.Min(valueW, 72);
         var trail = _trailing != null ? _trailingWidth + 12 : 0;
         var rightEdge = Width - 12 - trail;
@@ -207,7 +209,9 @@ internal sealed class SettingRow : Panel
         if (string.IsNullOrWhiteSpace(value)) return true;
         var v = value.Trim();
         return v is "—" or "-" or "None" or "Нет" || v.Contains("не задано", StringComparison.OrdinalIgnoreCase)
+               || v.Contains("не назначено", StringComparison.OrdinalIgnoreCase)
                || v.Contains("none", StringComparison.OrdinalIgnoreCase)
-               || v.Contains("not set", StringComparison.OrdinalIgnoreCase);
+               || v.Contains("not set", StringComparison.OrdinalIgnoreCase)
+               || v.Contains("not assigned", StringComparison.OrdinalIgnoreCase);
     }
 }

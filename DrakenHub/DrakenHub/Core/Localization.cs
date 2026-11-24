@@ -23,7 +23,7 @@ internal sealed class Localization
         ["nav.group.system"] = ("Система", "System"),
         ["wip.tooltip"] = ("В разработке", "In development"),
         ["play.title"] = ("Карта биндов", "Binding map"),
-        ["play.subtitle"] = ("Все горячие клавиши в одном месте. Клик — переназначить.", "All hotkeys in one place. Click a row to rebind."),
+        ["play.subtitle"] = ("Все горячие клавиши в одном месте. Клик — переназначить, × — не назначено.", "All hotkeys in one place. Click a row to rebind, × clears it."),
         ["play.empty"] = ("Пока нет назначенных клавиш", "No keys assigned yet"),
         ["bind.group.window"] = ("Окно", "Window"),
         ["bind.group.sell"] = ("Продажа", "Sell"),
@@ -54,6 +54,8 @@ internal sealed class Localization
         ["calib.skillsFail"] = ("Сетка уже выставлена. Окно навыков не появилось — проверь его клавишу.", "The grid is set. The skills window did not appear. Check its key."),
         ["section.sellTargets"] = ("Предметы и вкладки на продажу/плавку", "Items & tabs for sell/smelt"),
         ["not.set"] = ("не задано", "not set"),
+        ["not.assigned"] = ("не назначено", "not assigned"),
+        ["bind.clear"] = ("Сбросить", "Clear"),
         ["inv.sell"] = ("Продажа", "Sell"),
         ["inv.smelt"] = ("Плавка", "Smelt"),
         ["sell.all"] = ("Продать все вкладки", "Sell all tabs"),
@@ -247,7 +249,7 @@ internal sealed class Localization
         ["sb.profile.ranger"] = ("Следопыт", "Ranger"),
         ["sb.profile.mechanicus"] = ("Паромеханист (Dragan Set)", "Steam Mechanicus (Dragan Set)"),
         ["tt.coord"] = ("Кликните, чтобы выбрать точку на экране", "Click to pick a screen point"),
-        ["tt.hotkey"] = ("Кликните, затем нажмите клавишу (Esc — сброс)", "Click, then press a key (Esc clears)"),
+        ["tt.hotkey"] = ("Клик — назначить. Правый клик или Esc — не назначено", "Click to assign. Right-click or Esc clears"),
     };
 
     public string Language { get; set; } = "ru";

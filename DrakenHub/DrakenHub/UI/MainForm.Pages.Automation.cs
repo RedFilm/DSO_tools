@@ -506,10 +506,11 @@ internal sealed partial class MainForm
             {
                 skill.LabelText = $"{_loc.T("skill")} {index + 1}";
                 skill.ValueText = KeyNames.Parse(row.SkillHotkey) == Keys.None
-                    ? _loc.T("not.set")
+                    ? _loc.T("not.assigned")
                     : KeyNames.Display(row.SkillHotkey);
             }
             RefreshSkill();
+            skill.SetTrailing(CreateHotkeyClear(v => row.SkillHotkey = v, RefreshSkill), 28);
             skill.Activated += (_, _) =>
             {
                 skill.ValueText = _loc.T("pressAny");

@@ -538,7 +538,7 @@ internal sealed partial class MainForm : Form
     private string FormatHotkeyLabel(string labelKey, string? stored)
     {
         var key = KeyNames.Parse(stored);
-        var display = key == Keys.None ? _loc.T("none") : KeyNames.Display(stored);
+        var display = key == Keys.None ? _loc.T("not.assigned") : KeyNames.Display(stored);
         return $"{_loc.T(labelKey)} — [{display}]";
     }
 
@@ -634,6 +634,11 @@ internal sealed partial class MainForm : Form
                 Refresh();
             });
         };
+        button.MouseUp += (_, e) =>
+        {
+            if (e.Button != MouseButtons.Right) return;
+            ClearHotkey(setter, Refresh);
+        };
         _refreshAllLabels += () =>
         {
             Refresh();
@@ -648,9 +653,11 @@ internal sealed partial class MainForm : Form
             row.LabelText = _loc.T(labelKey);
             var k = KeyNames.Parse(getter());
             row.ValueDanger = false;
-            row.ValueText = k == Keys.None ? _loc.T("not.set") : KeyNames.Display(getter());
+            row.ValueText = k == Keys.None ? _loc.T("not.assigned") : KeyNames.Display(getter());
         }
         Refresh();
+        var clear = CreateHotkeyClear(setter, Refresh);
+        row.SetTrailing(clear, 28);
         row.Activated += (_, _) =>
         {
             row.ValueText = _loc.T("pressAny");
@@ -662,7 +669,32 @@ internal sealed partial class MainForm : Form
                 _refreshBindingMap?.Invoke();
             });
         };
-        _refreshAllLabels += Refresh;
+        _refreshAllLabels += () =>
+        {
+            Refresh();
+            _toolTips.SetToolTip(clear, _loc.T("bind.clear"));
+        };
+    }
+
+    private MiniButton CreateHotkeyClear(Action<string?> setter, Action refresh)
+    {
+        var clear = new MiniButton("×", BtnKind.Neutral);
+        clear.SetSize(28, 28);
+        clear.Click += (_, _) => ClearHotkey(setter, refresh);
+        _toolTips.SetToolTip(clear, _loc.T("bind.clear"));
+        return clear;
+    }
+
+    private void ClearHotkey(Action<string?> setter, Action? refresh = null)
+    {
+        _hotkeys.CancelCapture();
+        setter(null);
+        // Persist rebuilds the binding list. Do it after this click, so the button is not disposed mid-event.
+        BeginInvoke(() =>
+        {
+            Persist(immediate: true);
+            refresh?.Invoke();
+        });
     }
 
     private void BindCoordRow(SettingRow row, Func<ScreenPoint?> getter, Action<ScreenPoint?> setter, string labelKey, bool useOrigin = false, Func<int>? sizeProvider = null)
@@ -700,6 +732,11 @@ internal sealed partial class MainForm : Form
                 TryAssignHotkey(key, setter, id);
                 Refresh();
             });
+        };
+        button.MouseUp += (_, e) =>
+        {
+            if (e.Button != MouseButtons.Right) return;
+            ClearHotkey(setter, Refresh);
         };
         _refreshAllLabels += () =>
         {
@@ -914,7 +951,7 @@ internal sealed partial class MainForm : Form
         _statusLeft.Text = left;
         var stopKey = KeyNames.Display(_settings.Current.WindowHotkeys.EmergencyStop);
         if (KeyNames.Parse(_settings.Current.WindowHotkeys.EmergencyStop) == Keys.None)
-            stopKey = _loc.T("none");
+            stopKey = _loc.T("not.assigned");
         _statusRight.Text = _loc.Tf("status.stopHint", stopKey);
     }
 
