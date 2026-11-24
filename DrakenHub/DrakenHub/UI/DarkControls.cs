@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.Drawing.Drawing2D;
 using DrakenHub.Core;
+using DrakenHub.Models;
 using DrakenHub.Services;
 
 namespace DrakenHub.UI;
@@ -31,6 +32,22 @@ internal sealed class QuestionMarkPreview : Control
 internal sealed class ItemIconPreview : Control
 {
     private readonly Bitmap? _bmp;
+    private bool _dim;
+    private bool _marked;
+
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+    public bool Dim
+    {
+        get => _dim;
+        set { if (_dim == value) return; _dim = value; Invalidate(); }
+    }
+
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+    public bool Marked
+    {
+        get => _marked;
+        set { if (_marked == value) return; _marked = value; Invalidate(); }
+    }
 
     public ItemIconPreview(string? pngBase64)
     {
@@ -41,6 +58,7 @@ internal sealed class ItemIconPreview : Control
         Size = new Size(36, 32);
         Margin = Padding.Empty;
         BackColor = Theme.InputBg;
+        Cursor = Cursors.Hand;
     }
 
     protected override void Dispose(bool disposing)
@@ -54,12 +72,610 @@ internal sealed class ItemIconPreview : Control
         var g = e.Graphics;
         using (var bg = new SolidBrush(Theme.InputBg))
             g.FillRectangle(bg, ClientRectangle);
-        using (var pen = new Pen(Theme.Border))
+        if (_bmp != null)
+        {
+            g.InterpolationMode = InterpolationMode.NearestNeighbor;
+            g.PixelOffsetMode = PixelOffsetMode.Half;
+            g.DrawImage(_bmp, new Rectangle(2, 2, Width - 4, Height - 4));
+        }
+
+        if (_dim)
+        {
+            using var wash = new SolidBrush(Color.FromArgb(150, Theme.InputBg));
+            g.FillRectangle(wash, ClientRectangle);
+        }
+
+        using (var pen = new Pen(_marked ? Theme.Accent : Theme.Border))
             g.DrawRectangle(pen, 0, 0, Width - 1, Height - 1);
-        if (_bmp == null) return;
-        g.InterpolationMode = InterpolationMode.NearestNeighbor;
-        g.PixelOffsetMode = PixelOffsetMode.Half;
-        g.DrawImage(_bmp, new Rectangle(2, 2, Width - 4, Height - 4));
+
+        if (_marked)
+            DrawCheck(g, ClientRectangle);
+    }
+
+    /// <summary>Selection mark in the empty bottom-right corner of an icon.</summary>
+    public static void DrawCheck(Graphics g, Rectangle host)
+    {
+        const int mark = 15;
+        var box = new Rectangle(host.Right - mark - 3, host.Bottom - mark - 3, mark, mark);
+        using (var markBg = new SolidBrush(Theme.Accent))
+            g.FillRectangle(markBg, box);
+        var smooth = g.SmoothingMode;
+        g.SmoothingMode = SmoothingMode.AntiAlias;
+        using var tick = new Pen(Theme.Bg, 2f)
+        {
+            StartCap = LineCap.Round,
+            EndCap = LineCap.Round,
+            LineJoin = LineJoin.Round
+        };
+        g.DrawLines(tick,
+        [
+            new Point(box.X + 3, box.Y + 8),
+            new Point(box.X + 6, box.Y + 11),
+            new Point(box.X + 12, box.Y + 4)
+        ]);
+        g.SmoothingMode = smooth;
+    }
+}
+
+/// <summary>Flat button that draws its own caption. A system Button shows an overflow chevron when the text is tight.</summary>
+internal sealed class MiniButton : Control
+{
+    private readonly BtnKind _kind;
+    private bool _hover;
+    private Size _locked;
+
+    public MiniButton(string text, BtnKind kind)
+    {
+        Text = text;
+        _kind = kind;
+        SetStyle(
+            ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer |
+            ControlStyles.ResizeRedraw | ControlStyles.UserPaint, true);
+        Cursor = Cursors.Hand;
+        Font = Theme.UiFont;
+        Margin = Padding.Empty;
+    }
+
+    public void SetSize(int width, int height)
+    {
+        _locked = new Size(Math.Max(1, width), Math.Max(1, height));
+        MinimumSize = Size.Empty;
+        MaximumSize = Size.Empty;
+        MinimumSize = _locked;
+        MaximumSize = _locked;
+        Size = _locked;
+    }
+
+    public override Size GetPreferredSize(Size proposedSize)
+        => _locked.Width > 0 ? _locked : Size;
+
+    protected override void SetBoundsCore(int x, int y, int width, int height, BoundsSpecified specified)
+    {
+        if (_locked.Width > 0)
+        {
+            width = _locked.Width;
+            height = _locked.Height;
+        }
+        base.SetBoundsCore(x, y, width, height, specified);
+    }
+
+    protected override void OnPaint(PaintEventArgs e)
+    {
+        var g = e.Graphics;
+        var back = _kind == BtnKind.Danger ? Theme.DangerDim : Theme.Button;
+        var border = _kind == BtnKind.Danger ? Theme.Danger : Theme.ButtonBorder;
+        var fore = _kind == BtnKind.Danger ? Theme.Danger : Theme.Text;
+        if (_hover && _kind != BtnKind.Danger)
+            back = Theme.NavHover;
+        using (var brush = new SolidBrush(back))
+            g.FillRectangle(brush, ClientRectangle);
+        using (var pen = new Pen(border))
+            g.DrawRectangle(pen, 0, 0, Width - 1, Height - 1);
+        TextRenderer.DrawText(g, Text, Font, ClientRectangle, fore,
+            TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter |
+            TextFormatFlags.NoPadding | TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine);
+    }
+
+    protected override void OnMouseEnter(EventArgs e) { base.OnMouseEnter(e); _hover = true; Invalidate(); }
+    protected override void OnMouseLeave(EventArgs e) { base.OnMouseLeave(e); _hover = false; Invalidate(); }
+}
+
+/// <summary>One sellable item: icon toggles it, the name and the capture stay on the card.</summary>
+internal sealed class ItemTile : Panel
+{
+    public const string DragFormat = "DrakenHub.CustomItem";
+
+    private readonly CustomItemProfile _item;
+    private readonly ItemIconPreview _icon;
+    private readonly TextBox _name;
+    private readonly MiniButton _capture;
+    private readonly MiniButton _remove;
+    private Size _size;
+    private Point? _down;
+    private bool _dragged;
+
+    public ItemTile(CustomItemProfile item, Localization loc, Action toggle, Action capture, Action delete, Action<string> nameChanged, Action nameCommit)
+    {
+        _item = item;
+        Font = Theme.UiFont;
+        Margin = new Padding(0, 0, 6, 6);
+        BackColor = Theme.PanelAlt;
+
+        _icon = new ItemIconPreview(item.IconPng);
+        ArmDrag(_icon, toggle);
+
+        _name = UiFactory.Tb(item.Name);
+        _name.TextChanged += (_, _) => nameChanged(_name.Text);
+        _name.Leave += (_, _) => nameCommit();
+
+        _capture = new MiniButton(loc.T("btn.captureShort"), BtnKind.Neutral);
+        _capture.Click += (_, _) => capture();
+        _remove = new MiniButton("×", BtnKind.Danger);
+        _remove.Click += (_, _) => delete();
+
+        Controls.Add(_icon);
+        Controls.Add(_name);
+        Controls.Add(_capture);
+        Controls.Add(_remove);
+
+        Place(loc.T("btn.captureShort"));
+        ApplyState();
+        Paint += (_, e) =>
+        {
+            using var pen = new Pen(_item.Enabled ? Theme.Accent : Theme.Border);
+            e.Graphics.DrawRectangle(pen, 0, 0, Width - 1, Height - 1);
+        };
+    }
+
+    /// <summary>A short move starts a drag onto another group. A click still toggles the item.</summary>
+    private void ArmDrag(Control source, Action toggle)
+    {
+        source.MouseDown += (_, e) =>
+        {
+            if (e.Button != MouseButtons.Left) return;
+            _down = e.Location;
+            _dragged = false;
+        };
+        source.MouseMove += (_, e) =>
+        {
+            if (_dragged || _down == null || e.Button != MouseButtons.Left) return;
+            var dx = Math.Abs(e.X - _down.Value.X);
+            var dy = Math.Abs(e.Y - _down.Value.Y);
+            if (dx < SystemInformation.DragSize.Width && dy < SystemInformation.DragSize.Height) return;
+            _dragged = true;
+            _down = null;
+            DoDragDrop(new DataObject(DragFormat, _item.Id), DragDropEffects.Move);
+        };
+        source.MouseUp += (_, e) =>
+        {
+            var dragged = _dragged;
+            _dragged = false;
+            _down = null;
+            if (!dragged && e.Button == MouseButtons.Left)
+                toggle();
+        };
+    }
+
+    public void ApplyLanguage(Localization loc, ToolTip tips)
+    {
+        var caption = loc.T("btn.captureShort");
+        _capture.Text = caption;
+        Place(caption);
+        tips.SetToolTip(_capture, loc.T("item.captureHint"));
+        tips.SetToolTip(_icon, loc.T("item.iconHint"));
+        tips.SetToolTip(_remove, loc.T("delete"));
+    }
+
+    /// <summary>Size the card from the caption so the word is fully visible at the current DPI.</summary>
+    private void Place(string captureText)
+    {
+        var flags = TextFormatFlags.NoPadding | TextFormatFlags.SingleLine;
+        var capW = TextRenderer.MeasureText(captureText, Theme.UiFont, Size.Empty, flags).Width + 22;
+        var delW = TextRenderer.MeasureText("×", Theme.UiFont, Size.Empty, flags).Width + 18;
+        var btnH = Math.Max(26, Theme.UiFont.Height + 10);
+        const int pad = 8;
+        const int gap = 6;
+        var width = Math.Max(104, pad + capW + gap + delW + pad);
+        const int icon = 56;
+        var nameH = Theme.UiFont.Height + 8;
+        var y = pad;
+        _icon.SetBounds((width - icon) / 2, y, icon, icon);
+        y += icon + 6;
+        _name.SetBounds(pad, y, width - pad * 2, nameH);
+        y += nameH + 6;
+        _capture.SetSize(capW, btnH);
+        _capture.Location = new Point(pad, y);
+        _remove.SetSize(delW, btnH);
+        _remove.Location = new Point(pad + capW + gap, y);
+        y += btnH + pad;
+        _size = new Size(width, y);
+        MinimumSize = Size.Empty;
+        MaximumSize = Size.Empty;
+        MinimumSize = _size;
+        MaximumSize = _size;
+        Size = _size;
+    }
+
+    public override Size GetPreferredSize(Size proposedSize)
+        => _size.Width > 0 ? _size : Size;
+
+    protected override void SetBoundsCore(int x, int y, int width, int height, BoundsSpecified specified)
+    {
+        if (_size.Width > 0)
+        {
+            width = _size.Width;
+            height = _size.Height;
+        }
+        base.SetBoundsCore(x, y, width, height, specified);
+    }
+
+    public void ApplyState()
+    {
+        _icon.Marked = _item.Enabled;
+        _icon.Dim = !_item.Enabled;
+        Invalidate();
+    }
+}
+
+/// <summary>Built-in rarity template. The icon toggles it; the name cannot be edited.</summary>
+internal sealed class SystemTile : Panel
+{
+    private readonly RarityProfile _rarity;
+    private readonly Func<string> _title;
+    private readonly Label _name;
+    private Rectangle _icon;
+    private Size _size;
+
+    public SystemTile(RarityProfile rarity, Func<string> title, Action toggle)
+    {
+        _rarity = rarity;
+        _title = title;
+        Font = Theme.UiFont;
+        Margin = new Padding(0, 0, 6, 6);
+        BackColor = Theme.PanelAlt;
+        Cursor = Cursors.Hand;
+
+        _name = new Label
+        {
+            AutoSize = false,
+            AutoEllipsis = true,
+            TextAlign = ContentAlignment.MiddleCenter,
+            ForeColor = Theme.Text,
+            BackColor = Theme.PanelAlt,
+            Font = Theme.UiFont,
+            Cursor = Cursors.Hand,
+            Text = title()
+        };
+        _name.Click += (_, _) => toggle();
+        Click += (_, _) => toggle();
+        Controls.Add(_name);
+        Place();
+    }
+
+    public void ApplyLanguage()
+    {
+        _name.Text = _title();
+        Place();
+    }
+
+    public void ApplyState() => Invalidate();
+
+    private void Place()
+    {
+        var flags = TextFormatFlags.NoPadding | TextFormatFlags.SingleLine;
+        var textW = TextRenderer.MeasureText(_name.Text, Theme.UiFont, Size.Empty, flags).Width + 8;
+        const int pad = 8;
+        const int icon = 56;
+        var width = Math.Max(icon + pad * 2, textW + pad * 2);
+        var nameH = Theme.UiFont.Height + 8;
+        var y = pad;
+        _icon = new Rectangle((width - icon) / 2, y, icon, icon);
+        y += icon + 6;
+        _name.SetBounds(pad, y, width - pad * 2, nameH);
+        y += nameH + pad;
+        _size = new Size(width, y);
+        MinimumSize = Size.Empty;
+        MaximumSize = Size.Empty;
+        MinimumSize = _size;
+        MaximumSize = _size;
+        Size = _size;
+    }
+
+    public override Size GetPreferredSize(Size proposedSize)
+        => _size.Width > 0 ? _size : Size;
+
+    protected override void SetBoundsCore(int x, int y, int width, int height, BoundsSpecified specified)
+    {
+        if (_size.Width > 0)
+        {
+            width = _size.Width;
+            height = _size.Height;
+        }
+        base.SetBoundsCore(x, y, width, height, specified);
+    }
+
+    protected override void OnPaint(PaintEventArgs e)
+    {
+        var g = e.Graphics;
+        var template = QuestionMarkTemplates.Find(_rarity.Id);
+        var color = template?.DisplayColor ?? Color.FromArgb(_rarity.DisplayColorArgb);
+        QuestionMarkTemplates.DrawPreview(g, _icon, color, _rarity.Enabled);
+        if (!_rarity.Enabled)
+        {
+            using var wash = new SolidBrush(Color.FromArgb(150, Theme.PanelAlt));
+            g.FillRectangle(wash, _icon);
+        }
+
+        using (var pen = new Pen(_rarity.Enabled ? Theme.Accent : Theme.Border))
+        {
+            if (_icon.Width > 0)
+                g.DrawRectangle(pen, _icon.X, _icon.Y, _icon.Width - 1, _icon.Height - 1);
+            g.DrawRectangle(pen, 0, 0, Width - 1, Height - 1);
+        }
+
+        if (_rarity.Enabled && _icon.Width > 0)
+            ItemIconPreview.DrawCheck(g, _icon);
+    }
+}
+
+/// <summary>
+/// One group on the strip above the item grid. Click selects it, double-click renames it,
+/// the cross on the selected chip deletes it when more than one group exists.
+/// </summary>
+internal sealed class GroupChip : Control
+{
+    private static int ChipHeight => Math.Max(28, Theme.UiFont.Height + 12);
+    private static int DeleteWidth => Math.Max(16, Theme.UiFont.Height);
+
+    private readonly TextBox _edit;
+    private string _name = "";
+    private int _width;
+    private bool _selected;
+    private bool _hover;
+    private bool _allowDelete;
+    private bool _allowRename = true;
+    private bool _allowDrop;
+    private bool _dropHot;
+    private bool _deleteArmed;
+    private bool _committing;
+
+    public event EventHandler? Chosen;
+    public event EventHandler? DeleteRequested;
+    public event EventHandler<string>? Renamed;
+    public event EventHandler<string>? ItemDropped;
+
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+    public string GroupId { get; set; } = "";
+
+    public GroupChip()
+    {
+        SetStyle(
+            ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer |
+            ControlStyles.ResizeRedraw | ControlStyles.UserPaint, true);
+        Height = ChipHeight;
+        MinimumSize = new Size(36, ChipHeight);
+        Margin = new Padding(0, 0, 6, 6);
+        Cursor = Cursors.Hand;
+        Font = Theme.UiFont;
+        BackColor = Theme.InputBg;
+
+        _edit = new TextBox
+        {
+            Visible = false,
+            BorderStyle = BorderStyle.None,
+            BackColor = Theme.InputBg,
+            ForeColor = Theme.Text,
+            Font = Theme.UiFont,
+            TabStop = false
+        };
+        _edit.Leave += (_, _) => CommitEdit();
+        _edit.KeyDown += (_, e) =>
+        {
+            if (e.KeyCode == Keys.Enter)
+            {
+                e.SuppressKeyPress = true;
+                CommitEdit();
+            }
+            else if (e.KeyCode == Keys.Escape)
+            {
+                e.SuppressKeyPress = true;
+                CancelEdit();
+            }
+        };
+        Controls.Add(_edit);
+    }
+
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+    public bool IsSelected
+    {
+        get => _selected;
+        set { if (_selected == value) return; _selected = value; Invalidate(); }
+    }
+
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+    public bool AllowDelete
+    {
+        get => _allowDelete;
+        set
+        {
+            if (_allowDelete == value) return;
+            _allowDelete = value;
+            FitWidth();
+        }
+    }
+
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+    public bool AllowRename
+    {
+        get => _allowRename;
+        set => _allowRename = value;
+    }
+
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+    public bool AllowItemDrop
+    {
+        get => _allowDrop;
+        set
+        {
+            _allowDrop = value;
+            AllowDrop = value;
+        }
+    }
+
+    public void SetTitle(string name)
+    {
+        _name = name;
+        if (!_edit.Visible) _edit.Text = name;
+        FitWidth();
+    }
+
+    public override Size GetPreferredSize(Size proposedSize)
+        => new(_width > 0 ? _width : Math.Max(Width, 56), ChipHeight);
+
+    protected override void SetBoundsCore(int x, int y, int width, int height, BoundsSpecified specified)
+    {
+        if (_width > 0) width = _width;
+        base.SetBoundsCore(x, y, Math.Max(56, width), ChipHeight, BoundsSpecified.All);
+    }
+
+    protected override void OnPaint(PaintEventArgs e)
+    {
+        var g = e.Graphics;
+        var bg = _dropHot ? Theme.AccentDim : _selected ? Theme.NavActive : (_hover ? Theme.NavHover : Theme.InputBg);
+        using (var brush = new SolidBrush(bg))
+            g.FillRectangle(brush, ClientRectangle);
+        using (var pen = new Pen(_dropHot || _selected || _hover ? Theme.Accent : Theme.Border))
+            g.DrawRectangle(pen, 0, 0, Width - 1, Height - 1);
+
+        if (_edit.Visible) return;
+        var flags = TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding | TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine | TextFormatFlags.EndEllipsis;
+        var textRect = new Rectangle(8, 0, Math.Max(8, Width - 16 - (_allowDelete ? DeleteWidth + 2 : 0)), Height);
+        TextRenderer.DrawText(g, _name, Font, textRect,
+            _selected ? Theme.Accent : Theme.Text,
+            flags | TextFormatFlags.HorizontalCenter);
+
+        if (!_allowDelete || !_selected) return;
+        TextRenderer.DrawText(g, "×", Font, DeleteBounds, Theme.Danger,
+            TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding | TextFormatFlags.NoPrefix);
+    }
+
+    protected override void OnMouseDown(MouseEventArgs e)
+    {
+        base.OnMouseDown(e);
+        if (_allowDelete && _selected && DeleteBounds.Contains(e.Location))
+        {
+            _deleteArmed = true;
+            DeleteRequested?.Invoke(this, EventArgs.Empty);
+            return;
+        }
+
+        _deleteArmed = false;
+        Chosen?.Invoke(this, EventArgs.Empty);
+    }
+
+    protected override void OnDoubleClick(EventArgs e)
+    {
+        base.OnDoubleClick(e);
+        if (_deleteArmed || !_allowRename) return;
+        BeginEdit();
+    }
+
+    protected override void OnMouseEnter(EventArgs e) { base.OnMouseEnter(e); _hover = true; Invalidate(); }
+    protected override void OnMouseLeave(EventArgs e) { base.OnMouseLeave(e); _hover = false; Invalidate(); }
+
+    protected override void OnDragEnter(DragEventArgs e)
+    {
+        base.OnDragEnter(e);
+        AcceptDrop(e);
+    }
+
+    protected override void OnDragOver(DragEventArgs e)
+    {
+        base.OnDragOver(e);
+        AcceptDrop(e);
+    }
+
+    protected override void OnDragLeave(EventArgs e)
+    {
+        base.OnDragLeave(e);
+        if (!_dropHot) return;
+        _dropHot = false;
+        Invalidate();
+    }
+
+    protected override void OnDragDrop(DragEventArgs e)
+    {
+        base.OnDragDrop(e);
+        _dropHot = false;
+        Invalidate();
+        if (e.Data?.GetData(ItemTile.DragFormat) is string id && id.Length > 0)
+            ItemDropped?.Invoke(this, id);
+    }
+
+    private void AcceptDrop(DragEventArgs e)
+    {
+        var ok = _allowDrop && e.Data?.GetDataPresent(ItemTile.DragFormat) == true;
+        e.Effect = ok ? DragDropEffects.Move : DragDropEffects.None;
+        if (_dropHot == ok) return;
+        _dropHot = ok;
+        Invalidate();
+    }
+
+    private Rectangle DeleteBounds => new(Width - DeleteWidth - 5, 4, DeleteWidth, Height - 8);
+
+    private void FitWidth()
+    {
+        var flags = TextFormatFlags.NoPadding | TextFormatFlags.SingleLine;
+        var text = TextRenderer.MeasureText(_name, Font, Size.Empty, flags).Width + 22;
+        if (_allowDelete) text += DeleteWidth + 6;
+        _width = Math.Clamp(text, 72, 360);
+        MinimumSize = Size.Empty;
+        MaximumSize = Size.Empty;
+        MinimumSize = new Size(_width, ChipHeight);
+        MaximumSize = new Size(_width, ChipHeight);
+        Size = new Size(_width, ChipHeight);
+        Invalidate();
+    }
+
+    private void BeginEdit()
+    {
+        var right = _allowDelete ? DeleteWidth + 8 : 8;
+        _edit.SetBounds(8, 4, Math.Max(48, Width - 8 - right), Math.Max(16, ChipHeight - 8));
+        _edit.Text = _name;
+        _edit.Visible = true;
+        _edit.Focus();
+        _edit.SelectAll();
+        Invalidate();
+    }
+
+    private void CommitEdit()
+    {
+        if (_committing || !_edit.Visible) return;
+        _committing = true;
+        try
+        {
+            _edit.Visible = false;
+            Renamed?.Invoke(this, _edit.Text.Trim());
+        }
+        finally
+        {
+            _committing = false;
+        }
+    }
+
+    private void CancelEdit()
+    {
+        _committing = true;
+        try
+        {
+            _edit.Text = _name;
+            _edit.Visible = false;
+            Invalidate();
+        }
+        finally
+        {
+            _committing = false;
+        }
     }
 }
 

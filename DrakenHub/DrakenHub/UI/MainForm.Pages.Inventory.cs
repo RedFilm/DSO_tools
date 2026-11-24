@@ -102,7 +102,6 @@ internal sealed partial class MainForm
     {
         var body = UiFactory.VStack();
         body.Controls.Add(BuildTabsSectionInner());
-        body.Controls.Add(BuildRaritiesSectionInner());
         body.Controls.Add(BuildOtherItemsSection());
 
         var section = UiFactory.Section(_loc.T("section.sellTargets"), body, out var title);
@@ -569,126 +568,363 @@ internal sealed partial class MainForm
         return wrap;
     }
 
-    private Control BuildRaritiesSectionInner()
-    {
-        var host = UiFactory.VStack();
-        var title = SubHead(_loc.T("section.rarities"));
-        host.Controls.Add(title);
-
-        var list = UiFactory.VStack();
-        host.Controls.Add(list);
-        var rows = new List<RarityPickRow>();
-
-        void Rebuild()
-        {
-            list.SuspendLayout();
-            list.Controls.Clear();
-            rows.Clear();
-            foreach (var rarity in _settings.Current.Inventory.Rarities)
-            {
-                var r = rarity;
-                var template = QuestionMarkTemplates.Find(r.Id);
-                if (template == null && !r.Enabled)
-                    r.Enabled = false;
-                var row = new RarityPickRow(template, () => LocalizedRarityName(r), r.Enabled);
-                row.IsOnChanged += (_, _) =>
-                {
-                    if (template == null) return;
-                    r.Enabled = row.IsOn;
-                    Persist(grid: true);
-                };
-                rows.Add(row);
-                list.Controls.Add(row);
-            }
-            list.ResumeLayout(false);
-            UiFactory.Relayout(host);
-        }
-
-        Rebuild();
-        _refreshInventory = Rebuild;
-        _refreshAllLabels += () =>
-        {
-            title.Text = _loc.T("section.rarities");
-            foreach (var row in rows)
-                row.RefreshTitle();
-        };
-        return host;
-    }
-
     private Control BuildOtherItemsSection()
     {
-        var list = UiFactory.VStack();
-        void Rebuild()
-        {
-            list.SuspendLayout();
-            for (var i = list.Controls.Count - 1; i >= 0; i--)
-            {
-                var old = list.Controls[i];
-                list.Controls.RemoveAt(i);
-                old.Dispose();
-            }
+        var title = SubHead(_loc.T("section.rarities"));
+        var addItem = UiFactory.Btn(_loc.T("btn.addItem"), BtnKind.Neutral, 28);
+        var selectAll = UiFactory.Btn(_loc.T("btn.itemsAll"), BtnKind.Neutral, 28);
+        var groupStrip = new UiFactory.WrapGrid { Padding = new Padding(0, 2, 0, 2) };
+        var grid = new UiFactory.WrapGrid();
+        var chips = new List<GroupChip>();
+        var tiles = new List<ItemTile>();
+        var systemTiles = new List<SystemTile>();
+        Control? addGroup = null;
 
-            foreach (var item in _settings.Current.Inventory.OtherItems.ToList())
-            {
-                var it = item;
-                var block = UiFactory.VStack();
-                var enabled = UiFactory.Check(it.Name, it.Enabled);
-                enabled.CheckedChanged += (_, _) => { it.Enabled = enabled.Checked; Persist(grid: true); };
-                var name = UiFactory.Tb(it.Name);
-                name.TextChanged += (_, _) => { it.Name = name.Text; enabled.Text = name.Text; };
-                name.Leave += (_, _) => Persist();
-                var preview = new ItemIconPreview(it.IconPng);
-                var capture = UiFactory.Btn(_loc.T("btn.captureItem"), BtnKind.Neutral);
-                capture.Click += (_, _) =>
-                {
-                    if (!CaptureItemIcon(it)) return;
-                    RefreshList();
-                };
-                _toolTips.SetToolTip(capture, _loc.T("item.captureHint"));
-                var removeItem = MakeDeleteButton(() =>
-                {
-                    _settings.Current.Inventory.OtherItems.Remove(it);
-                    Persist(grid: true);
-                    RefreshList();
-                });
-                block.Controls.Add(UiFactory.ActionRow(
-                    (enabled, 120), (name, 150), (preview, 36), (capture, 0), (removeItem, removeItem.Width)));
-                _refreshAllLabels += () =>
-                {
-                    if (capture.IsDisposed) return;
-                    capture.Text = _loc.T("btn.captureItem");
-                    _toolTips.SetToolTip(capture, _loc.T("item.captureHint"));
-                };
-                list.Controls.Add(block);
-            }
-            list.ResumeLayout(false);
-            UiFactory.Relayout(list);
+        string GroupTitle(ItemGroup group) =>
+            string.IsNullOrWhiteSpace(group.Name) ? _loc.T("group.default") : group.Name;
+
+        InventorySettings Inventory() => _settings.Current.Inventory;
+
+        bool IsSystem(string? id) => id == ItemGroup.SystemId;
+
+        string ActiveGroupId()
+        {
+            var inv = Inventory();
+            if (inv.ItemGroups.Count == 0)
+                inv.ItemGroups.Add(new ItemGroup());
+            if (IsSystem(inv.ActiveItemGroupId))
+                return ItemGroup.SystemId;
+            if (string.IsNullOrEmpty(inv.ActiveItemGroupId) || inv.ItemGroups.All(g => g.Id != inv.ActiveItemGroupId))
+                inv.ActiveItemGroupId = inv.ItemGroups[0].Id;
+            return inv.ActiveItemGroupId!;
         }
 
-        void RefreshList()
+        List<CustomItemProfile> VisibleItems()
         {
-            if (!list.IsHandleCreated)
+            var id = ActiveGroupId();
+            return Inventory().OtherItems.Where(i => i.GroupId == id).ToList();
+        }
+
+        List<RarityProfile> VisibleRarities() =>
+            Inventory().Rarities.Where(r => QuestionMarkTemplates.HasTemplate(r.Id)).ToList();
+
+        void SyncSelect()
+        {
+            var system = IsSystem(ActiveGroupId());
+            addItem.Enabled = !system;
+            _toolTips.SetToolTip(addItem, system ? _loc.T("group.noAdd") : "");
+            if (system)
             {
-                Rebuild();
+                var list = VisibleRarities();
+                var allOn = list.Count > 0 && list.All(r => r.Enabled);
+                selectAll.Text = _loc.T(allOn ? "btn.itemsNone" : "btn.itemsAll");
+                selectAll.Enabled = list.Count > 0;
                 return;
             }
 
-            list.BeginInvoke(new Action(Rebuild));
+            var items = VisibleItems();
+            var itemsOn = items.Count > 0 && items.All(i => i.Enabled);
+            selectAll.Text = _loc.T(itemsOn ? "btn.itemsNone" : "btn.itemsAll");
+            selectAll.Enabled = items.Count > 0;
         }
 
-        var addItem = UiFactory.Btn(_loc.T("btn.addItem"), BtnKind.Neutral, 28);
+        void RebuildTiles()
+        {
+            grid.SuspendLayout();
+            for (var i = grid.Controls.Count - 1; i >= 0; i--)
+            {
+                var old = grid.Controls[i];
+                grid.Controls.RemoveAt(i);
+                old.Dispose();
+            }
+
+            tiles.Clear();
+            systemTiles.Clear();
+            if (IsSystem(ActiveGroupId()))
+            {
+                foreach (var rarity in VisibleRarities())
+                {
+                    var r = rarity;
+                    var tile = new SystemTile(r, () => LocalizedRarityName(r), () =>
+                    {
+                        if (!QuestionMarkTemplates.HasTemplate(r.Id)) return;
+                        r.Enabled = !r.Enabled;
+                        Persist(grid: true);
+                        foreach (var live in systemTiles)
+                        {
+                            if (!live.IsDisposed) live.ApplyState();
+                        }
+                        SyncSelect();
+                    });
+                    _toolTips.SetToolTip(tile, _loc.T("item.systemHint"));
+                    systemTiles.Add(tile);
+                    grid.Controls.Add(tile);
+                }
+            }
+            else
+            {
+            foreach (var item in VisibleItems())
+            {
+                var it = item;
+                var tile = new ItemTile(
+                    it,
+                    _loc,
+                    () =>
+                    {
+                        it.Enabled = !it.Enabled;
+                        Persist(grid: true);
+                        foreach (var live in tiles)
+                        {
+                            if (!live.IsDisposed) live.ApplyState();
+                        }
+                        SyncSelect();
+                    },
+                    () =>
+                    {
+                        if (!CaptureItemIcon(it)) return;
+                        RefreshTiles();
+                    },
+                    () =>
+                    {
+                        if (!ConfirmAction("confirm.delete")) return;
+                        Inventory().OtherItems.Remove(it);
+                        Persist(grid: true);
+                        RefreshTiles();
+                    },
+                    text => it.Name = text,
+                    () => Persist());
+                tile.ApplyLanguage(_loc, _toolTips);
+                tiles.Add(tile);
+                grid.Controls.Add(tile);
+            }
+            }
+
+            grid.ResumeLayout(false);
+            SyncSelect();
+            UiFactory.Relayout(grid);
+        }
+
+        void RebuildGroups()
+        {
+            groupStrip.SuspendLayout();
+            for (var i = groupStrip.Controls.Count - 1; i >= 0; i--)
+            {
+                var old = groupStrip.Controls[i];
+                groupStrip.Controls.RemoveAt(i);
+                old.Dispose();
+            }
+
+            chips.Clear();
+            var inv = Inventory();
+            var active = ActiveGroupId();
+            var canDelete = inv.ItemGroups.Count > 1;
+
+            var system = new GroupChip
+            {
+                GroupId = ItemGroup.SystemId,
+                AllowDelete = false,
+                AllowRename = false,
+                AllowItemDrop = false,
+                IsSelected = IsSystem(active)
+            };
+            system.SetTitle(_loc.T("group.system"));
+            system.Chosen += (_, _) => Choose(ItemGroup.SystemId);
+            _toolTips.SetToolTip(system, _loc.T("group.systemHint"));
+            chips.Add(system);
+            groupStrip.Controls.Add(system);
+
+            foreach (var group in inv.ItemGroups)
+            {
+                var g = group;
+                var chip = new GroupChip
+                {
+                    GroupId = g.Id,
+                    AllowDelete = canDelete,
+                    AllowRename = true,
+                    AllowItemDrop = true,
+                    IsSelected = g.Id == active
+                };
+                chip.SetTitle(GroupTitle(g));
+                chip.Chosen += (_, _) => Choose(g.Id);
+                chip.DeleteRequested += (_, _) => AskDeleteGroup(g);
+                chip.ItemDropped += (_, itemId) => MoveItem(itemId, g);
+                chip.Renamed += (_, name) =>
+                {
+                    g.Name = name;
+                    Persist();
+                    RefreshAll();
+                };
+                _toolTips.SetToolTip(chip, _loc.T("group.renameHint"));
+                chips.Add(chip);
+                groupStrip.Controls.Add(chip);
+            }
+
+            var side = Math.Max(28, Theme.UiFont.Height + 12);
+            var plus = new MiniButton("+", BtnKind.Neutral) { Margin = new Padding(0, 0, 0, 6) };
+            plus.SetSize(side, side);
+            addGroup = plus;
+            addGroup.Click += (_, _) => AddGroup();
+            _toolTips.SetToolTip(addGroup, _loc.T("group.add"));
+            groupStrip.Controls.Add(addGroup);
+            groupStrip.ResumeLayout(false);
+        }
+
+        void Choose(string groupId)
+        {
+            if (Inventory().ActiveItemGroupId == groupId) return;
+            Inventory().ActiveItemGroupId = groupId;
+            Persist();
+            foreach (var chip in chips)
+            {
+                if (!chip.IsDisposed) chip.IsSelected = chip.GroupId == groupId;
+            }
+            RebuildTiles();
+        }
+
+        void MoveItem(string itemId, ItemGroup target)
+        {
+            if (IsSystem(target.Id)) return;
+            var item = Inventory().OtherItems.FirstOrDefault(i => i.Id == itemId);
+            if (item == null || item.GroupId == target.Id) return;
+            item.GroupId = target.Id;
+            Inventory().ActiveItemGroupId = target.Id;
+            Persist(grid: true);
+            RefreshAll();
+        }
+
+        void AddGroup()
+        {
+            var inv = Inventory();
+            var group = new ItemGroup { Name = _loc.Tf("group.new", inv.ItemGroups.Count + 1) };
+            inv.ItemGroups.Add(group);
+            inv.ActiveItemGroupId = group.Id;
+            Persist();
+            RefreshAll();
+        }
+
+        void AskDeleteGroup(ItemGroup group)
+        {
+            var inv = Inventory();
+            if (inv.ItemGroups.Count < 2) return;
+            var other = inv.ItemGroups.First(g => g.Id != group.Id);
+            var message = _loc.Tf("group.delete", GroupTitle(group), GroupTitle(other));
+            if (MessageBox.Show(message, _loc.T("notify"), MessageBoxButtons.YesNo, MessageBoxIcon.Warning) != DialogResult.Yes)
+                return;
+            foreach (var item in inv.OtherItems)
+            {
+                if (item.GroupId == group.Id) item.GroupId = other.Id;
+            }
+            inv.ItemGroups.Remove(group);
+            inv.ActiveItemGroupId = other.Id;
+            Persist(grid: true);
+            RefreshAll();
+        }
+
+        void RefreshTiles()
+        {
+            if (!grid.IsHandleCreated)
+            {
+                RebuildTiles();
+                return;
+            }
+
+            grid.BeginInvoke(new Action(RebuildTiles));
+        }
+
+        void RefreshAll()
+        {
+            if (!groupStrip.IsHandleCreated)
+            {
+                RebuildGroups();
+                RebuildTiles();
+                return;
+            }
+
+            groupStrip.BeginInvoke(new Action(() =>
+            {
+                RebuildGroups();
+                RebuildTiles();
+            }));
+        }
+
         addItem.Click += (_, _) =>
         {
-            _settings.Current.Inventory.OtherItems.Add(new CustomItemProfile { Name = "Item" });
+            if (IsSystem(ActiveGroupId())) return;
+            Inventory().OtherItems.Add(new CustomItemProfile { Name = "Item", GroupId = ActiveGroupId() });
             Persist();
-            Rebuild();
+            RebuildTiles();
+        };
+        selectAll.Click += (_, _) =>
+        {
+            if (IsSystem(ActiveGroupId()))
+            {
+                var rarities = VisibleRarities();
+                if (rarities.Count == 0) return;
+                var turnOn = rarities.Any(r => !r.Enabled);
+                foreach (var rarity in rarities)
+                    rarity.Enabled = turnOn;
+                Persist(grid: true);
+                foreach (var tile in systemTiles)
+                {
+                    if (!tile.IsDisposed) tile.ApplyState();
+                }
+                SyncSelect();
+                return;
+            }
+
+            var list = VisibleItems();
+            if (list.Count == 0) return;
+            var itemsOn = list.Any(i => !i.Enabled);
+            foreach (var it in list)
+                it.Enabled = itemsOn;
+            Persist(grid: true);
+            foreach (var tile in tiles)
+            {
+                if (!tile.IsDisposed) tile.ApplyState();
+            }
+            SyncSelect();
         };
 
         var wrap = UiFactory.VStack();
-        wrap.Controls.Add(addItem);
-        wrap.Controls.Add(list);
-        Rebuild();
-        _refreshAllLabels += () => addItem.Text = _loc.T("btn.addItem");
+        wrap.Controls.Add(title);
+        wrap.Controls.Add(groupStrip);
+        wrap.Controls.Add(UiFactory.ActionRow((addItem, 0), (selectAll, 0)));
+        wrap.Controls.Add(grid);
+        RebuildGroups();
+        RebuildTiles();
+        _refreshInventory = RebuildTiles;
+        _refreshAllLabels += () =>
+        {
+            title.Text = _loc.T("section.rarities");
+            if (!addItem.IsDisposed) addItem.Text = _loc.T("btn.addItem");
+            if (addGroup is { IsDisposed: false })
+                _toolTips.SetToolTip(addGroup, _loc.T("group.add"));
+            foreach (var chip in chips)
+            {
+                if (chip.IsDisposed) continue;
+                if (chip.GroupId == ItemGroup.SystemId)
+                {
+                    chip.SetTitle(_loc.T("group.system"));
+                    _toolTips.SetToolTip(chip, _loc.T("group.systemHint"));
+                    continue;
+                }
+                var group = Inventory().ItemGroups.FirstOrDefault(g => g.Id == chip.GroupId);
+                if (group != null) chip.SetTitle(GroupTitle(group));
+                _toolTips.SetToolTip(chip, _loc.T("group.renameHint"));
+            }
+            SyncSelect();
+            foreach (var tile in tiles)
+            {
+                if (!tile.IsDisposed) tile.ApplyLanguage(_loc, _toolTips);
+            }
+            foreach (var tile in systemTiles)
+            {
+                if (tile.IsDisposed) continue;
+                tile.ApplyLanguage();
+                _toolTips.SetToolTip(tile, _loc.T("item.systemHint"));
+            }
+            UiFactory.Relayout(groupStrip);
+        };
         return wrap;
     }
 

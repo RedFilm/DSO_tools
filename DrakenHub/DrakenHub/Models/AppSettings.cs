@@ -49,6 +49,9 @@ public sealed class InventorySettings
     public GridSettings Grid { get; set; } = new();
     public bool[] SelectedTabs { get; set; } = [true, false, true, true, true, false, false, false, false];
     public List<RarityProfile> Rarities { get; set; } = RarityProfile.CreateDefaults();
+    public List<ItemGroup> ItemGroups { get; set; } = [];
+    /// <summary>Group shown in the sell-item gallery. Empty until the first launch fills it in.</summary>
+    public string? ActiveItemGroupId { get; set; }
     public List<CustomItemProfile> OtherItems { get; set; } = [];
 
     public ScreenPoint? SmelterItem { get; set; }
@@ -98,11 +101,23 @@ public sealed class RarityProfile
     ];
 }
 
+public sealed class ItemGroup
+{
+    /// <summary>Built-in rarity templates. Not stored as a user group and not editable.</summary>
+    public const string SystemId = "system";
+
+    public string Id { get; set; } = Guid.NewGuid().ToString("N");
+    /// <summary>Empty name is shown as the localized default («Общие»).</summary>
+    public string Name { get; set; } = "";
+}
+
 public sealed class CustomItemProfile
 {
     public string Id { get; set; } = Guid.NewGuid().ToString("N");
     public string Name { get; set; } = "Item";
     public bool Enabled { get; set; } = true;
+    /// <summary>Which <see cref="ItemGroup"/> this item belongs to.</summary>
+    public string? GroupId { get; set; }
 
     /// <summary>Base64 PNG of the colored stone. Transparent pixels are ignored.</summary>
     public string? IconPng { get; set; }

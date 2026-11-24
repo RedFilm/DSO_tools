@@ -82,6 +82,7 @@ internal sealed class SettingsService
     {
         s.Inventory.SelectedTabs = NormalizeTabs(s.Inventory.SelectedTabs);
         s.Inventory.Rarities = NormalizeRarities(s.Inventory.Rarities);
+        EnsureItemGroups(s.Inventory);
         if (s.AutoCast.Rows.Count < 5)
         {
             while (s.AutoCast.Rows.Count < 5)
@@ -112,6 +113,28 @@ internal sealed class SettingsService
                 def.Enabled = true; // previously disabled only because Set template was missing
         }
         return defaults;
+    }
+
+    /// <summary>
+    /// Every custom item lives in a group. Older saves had none, so they all land in the first one.
+    /// </summary>
+    private static void EnsureItemGroups(InventorySettings inv)
+    {
+        inv.ItemGroups ??= [];
+        if (inv.ItemGroups.Count == 0)
+            inv.ItemGroups.Add(new ItemGroup());
+
+        var ids = inv.ItemGroups.Select(g => g.Id).ToHashSet(StringComparer.Ordinal);
+        var fallback = inv.ItemGroups[0].Id;
+        foreach (var item in inv.OtherItems)
+        {
+            if (string.IsNullOrEmpty(item.GroupId) || !ids.Contains(item.GroupId))
+                item.GroupId = fallback;
+        }
+
+        if (string.IsNullOrEmpty(inv.ActiveItemGroupId)
+            || (inv.ActiveItemGroupId != ItemGroup.SystemId && !ids.Contains(inv.ActiveItemGroupId)))
+            inv.ActiveItemGroupId = fallback;
     }
 
     private static bool[] NormalizeTabs(bool[]? tabs)

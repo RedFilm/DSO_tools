@@ -138,7 +138,10 @@ internal static class UiFactory
                     LayoutPlainPanel(plainRow, width);
                 }
 
-                c.Width = width;
+                if (c is WrapGrid grid)
+                    grid.ApplyOuterSize(width, MeasureWrap(c, width));
+                else
+                    c.Width = width;
             }
             flp.Height = MeasureHeight(flp);
             flp.ResumeLayout(true); // reflow children with final heights — prevents overlap
@@ -236,6 +239,35 @@ internal static class UiFactory
             return Math.Max(RowH + 4, row.Height > 0 ? row.Height : RowH + 8);
 
         return Math.Max(RowH, c.PreferredSize.Height > 0 ? c.PreferredSize.Height : c.Height);
+    }
+
+    /// <summary>Row-wrap height from child sizes. PreferredSize lags until the handle exists.</summary>
+    private static int MeasureWrap(Control grid, int width)
+    {
+        var inner = Math.Max(1, width - grid.Padding.Horizontal);
+        var x = 0;
+        var rowH = 0;
+        var h = grid.Padding.Vertical;
+        var any = false;
+        foreach (Control c in grid.Controls)
+        {
+            if (!c.Visible) continue;
+            any = true;
+            var w = Math.Max(1, c.Width + c.Margin.Horizontal);
+            var ch = c.Height + c.Margin.Vertical;
+            if (x > 0 && x + w > inner)
+            {
+                h += rowH;
+                x = 0;
+                rowH = 0;
+            }
+
+            x += w;
+            rowH = Math.Max(rowH, ch);
+        }
+
+        if (any) h += rowH;
+        return Math.Max(1, h);
     }
 
     private static void LayoutSectionHeader(Panel panel, int width)
@@ -369,6 +401,93 @@ internal static class UiFactory
         row.Controls.Add(left, 0, 0);
         row.Controls.Add(right, 1, 0);
         return row;
+    }
+
+    /// <summary>
+    /// Left-to-right gallery that wraps. The stack assigns the outer size.
+    /// FlowLayoutPanel would otherwise shrink the gallery to the first child, clipping the rest.
+    /// </summary>
+    internal sealed class WrapGrid : FlowLayoutPanel
+    {
+        private Size _outer;
+        private bool _placing;
+
+        public WrapGrid()
+        {
+            FlowDirection = FlowDirection.LeftToRight;
+            WrapContents = true;
+            AutoSize = false;
+            AutoScroll = false;
+            BackColor = Color.Transparent;
+            Margin = Padding.Empty;
+            Padding = new Padding(0, 6, 0, 0);
+        }
+
+        public void ApplyOuterSize(int width, int height)
+        {
+            _outer = new Size(Math.Max(1, width), Math.Max(1, height));
+            SuspendLayout();
+            try
+            {
+                SetBounds(Left, Top, _outer.Width, _outer.Height, BoundsSpecified.Size);
+                PlaceChildren();
+            }
+            finally
+            {
+                ResumeLayout(false);
+            }
+        }
+
+        public override Size GetPreferredSize(Size proposedSize)
+            => _outer.Width > 0 ? _outer : base.GetPreferredSize(proposedSize);
+
+        protected override void SetBoundsCore(int x, int y, int width, int height, BoundsSpecified specified)
+        {
+            if (_outer.Width > 0)
+            {
+                width = _outer.Width;
+                height = _outer.Height;
+            }
+            base.SetBoundsCore(x, y, width, height, specified);
+        }
+
+        protected override void OnLayout(LayoutEventArgs levent)
+        {
+            PlaceChildren();
+        }
+
+        private void PlaceChildren()
+        {
+            if (_placing) return;
+            _placing = true;
+            try
+            {
+                var inner = Math.Max(1, ClientSize.Width - Padding.Horizontal);
+                var x = Padding.Left;
+                var y = Padding.Top;
+                var rowH = 0;
+                foreach (Control c in Controls)
+                {
+                    if (!c.Visible) continue;
+                    var w = Math.Max(1, c.Width) + c.Margin.Horizontal;
+                    var h = Math.Max(1, c.Height) + c.Margin.Vertical;
+                    if (x > Padding.Left && x + w > Padding.Left + inner)
+                    {
+                        x = Padding.Left;
+                        y += rowH;
+                        rowH = 0;
+                    }
+
+                    c.Location = new Point(x + c.Margin.Left, y + c.Margin.Top);
+                    x += w;
+                    rowH = Math.Max(rowH, h);
+                }
+            }
+            finally
+            {
+                _placing = false;
+            }
+        }
     }
 
     public static FlowLayoutPanel VStack()
