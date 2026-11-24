@@ -35,6 +35,8 @@ internal static class Theme
     public static readonly Color AccentDim = Color.FromArgb(52, 44, 34);
 
     public static readonly Color Success = Color.FromArgb(110, 158, 128);
+    /// <summary>Amber used only to flag unfinished setup. Brighter than the calm accent.</summary>
+    public static readonly Color Signal = Color.FromArgb(224, 168, 72);
     public static readonly Color Danger = Color.FromArgb(176, 110, 110);
     public static readonly Color DangerDim = Color.FromArgb(52, 36, 38);
 

@@ -330,27 +330,31 @@ internal sealed partial class MainForm
             : $"{name} ({_loc.T("rarity.noTemplate")})";
     }
 
+    private static bool UnsetHotkey(string? stored) => KeyNames.Parse(stored) == Keys.None;
+
     private Control BuildChecklistSection(InventorySettings inv)
     {
         var inner = UiFactory.VStack();
         var summary = new Label
         {
             AutoSize = false,
-            Height = Theme.UiFont.Height * 2 + 8,
+            Height = Theme.UiFont.Height + 4,
             Font = Theme.UiFont,
             BackColor = Color.Transparent,
-            Margin = new Padding(2, 4, 2, 4)
+            TextAlign = ContentAlignment.MiddleLeft,
+            Margin = new Padding(0, 0, 0, 2)
         };
-        var itemsHost = UiFactory.VStack();
+        var itemRows = new List<Control>();
         inner.Controls.Add(summary);
-        inner.Controls.Add(itemsHost);
         inner.Controls.Add(BuildGeneralSettingsFold(inv));
         inner.Controls.Add(BuildSellCalibrationSection(inv));
+        var section = UiFactory.Section(_loc.T("section.checklist"), inner, out var title);
+        _refreshAllLabels += () => title.Text = _loc.T("section.checklist");
 
         void Refresh()
         {
             var current = _settings.Current.Inventory;
-            var missing = new List<(string Key, Action Fix)>();
+            var missing = new List<(string Key, Action? Fix)>();
             if (current.FirstCell == null)
                 missing.Add(("checklist.firstCell", () =>
                 {
@@ -375,13 +379,31 @@ internal sealed partial class MainForm
                     PickCoord(v => current.ShopButton = v, () => { }, GridSettings.PickerSize, false);
                     _refreshAllLabels?.Invoke();
                 }));
-            if (string.IsNullOrWhiteSpace(current.SellAllHotkey))
-                missing.Add(("checklist.sellHotkey", () => { }));
+            if (current.WisdomTab == null)
+                missing.Add(("btn.wisdom", () =>
+                {
+                    PickCoord(v => current.WisdomTab = v, () => { }, GridSettings.PickerSize, false);
+                    _refreshAllLabels?.Invoke();
+                }));
+            if (UnsetHotkey(current.SellAllHotkey))
+                missing.Add(("checklist.sellHotkey", null));
+            if (UnsetHotkey(current.InventoryHotkey))
+                missing.Add(("btn.inventory", null));
+            if (UnsetHotkey(current.SkillsWindowHotkey))
+                missing.Add(("btn.skills", null));
             if (!current.SelectedTabs.Any(t => t))
-                missing.Add(("checklist.tabs", () => { }));
+                missing.Add(("checklist.tabs", null));
 
-            itemsHost.Controls.Clear();
-            if (missing.Count == 0)
+            foreach (var row in itemRows)
+            {
+                inner.Controls.Remove(row);
+                row.Dispose();
+            }
+            itemRows.Clear();
+
+            var ready = missing.Count == 0;
+            title.ForeColor = ready ? Theme.Text : Theme.Signal;
+            if (ready)
             {
                 summary.Text = _loc.T("checklist.ready");
                 summary.ForeColor = Theme.Success;
@@ -389,14 +411,31 @@ internal sealed partial class MainForm
             else
             {
                 summary.Text = _loc.T("checklist.incomplete");
-                summary.ForeColor = Theme.Accent;
+                summary.ForeColor = Theme.Signal;
+                var at = 1;
                 foreach (var (key, fix) in missing)
                 {
-                    var btn = UiFactory.Btn("• " + _loc.T(key), BtnKind.Neutral, 28);
-                    btn.TextAlign = ContentAlignment.MiddleLeft;
-                    var action = fix;
-                    btn.Click += (_, _) => action();
-                    itemsHost.Controls.Add(btn);
+                    var canFix = fix != null;
+                    var line = new Label
+                    {
+                        AutoSize = false,
+                        Height = Theme.UiFont.Height + 4,
+                        Font = Theme.UiFont,
+                        ForeColor = Theme.Signal,
+                        BackColor = Color.Transparent,
+                        Text = "•  " + _loc.T(key),
+                        TextAlign = ContentAlignment.MiddleLeft,
+                        Margin = new Padding(0, 0, 0, 2),
+                        Cursor = canFix ? Cursors.Hand : Cursors.Default
+                    };
+                    if (canFix)
+                    {
+                        var action = fix!;
+                        line.Click += (_, _) => action();
+                    }
+                    inner.Controls.Add(line);
+                    inner.Controls.SetChildIndex(line, at++);
+                    itemRows.Add(line);
                 }
             }
             UiFactory.Relayout(inner);
@@ -405,8 +444,6 @@ internal sealed partial class MainForm
         Refresh();
         _refreshChecklist = Refresh;
         _refreshAllLabels += Refresh;
-        var section = UiFactory.Section(_loc.T("section.checklist"), inner, out var title);
-        _refreshAllLabels += () => title.Text = _loc.T("section.checklist");
         return section;
     }
 
