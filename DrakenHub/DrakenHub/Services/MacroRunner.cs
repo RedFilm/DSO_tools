@@ -7,6 +7,7 @@ internal sealed class MacroRunner
 {
     private readonly SettingsService _settings;
     private readonly InputService _input;
+    private readonly MouseGuard _mouse;
     private readonly ColorScanService _scan;
     private CancellationTokenSource? _cts;
     private readonly object _gate = new();
@@ -16,10 +17,11 @@ internal sealed class MacroRunner
         get { lock (_gate) return _cts is { IsCancellationRequested: false }; }
     }
 
-    public MacroRunner(SettingsService settings, InputService input)
+    public MacroRunner(SettingsService settings, InputService input, MouseGuard mouse)
     {
         _settings = settings;
         _input = input;
+        _mouse = mouse;
         _scan = new ColorScanService(input);
     }
 
@@ -47,13 +49,17 @@ internal sealed class MacroRunner
             var origin = _input.GetCursorPosition();
             try
             {
+                _mouse.Enter();
                 EnsureGameFocused();
                 await work(token);
             }
             catch (OperationCanceledException) { }
             finally
             {
-                _input.MoveTo(origin);
+                _input.Restore(origin);
+                _mouse.Leave();
+                if (_input.GetCursorPosition() != origin)
+                    _input.MoveTo(origin);
                 lock (_gate)
                 {
                     if (_cts?.Token == token)

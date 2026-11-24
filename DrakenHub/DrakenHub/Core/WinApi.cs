@@ -10,14 +10,25 @@ internal static class WinApi
     public const int WmSysKeyDown = 0x0104;
     public const int WmKeyUp = 0x0101;
     public const int WmSysKeyUp = 0x0105;
+    public const int WmMouseMove = 0x0200;
     public const int WmLButtonDown = 0x0201;
+    public const int WmLButtonUp = 0x0202;
     public const int WmRButtonDown = 0x0204;
+    public const int WmRButtonUp = 0x0205;
+    public const int WmMButtonDown = 0x0207;
+    public const int WmMButtonUp = 0x0208;
+    public const int WmMouseWheel = 0x020A;
+    public const int WmXButtonDown = 0x020B;
+    public const int WmXButtonUp = 0x020C;
+    public const uint LlmhfInjected = 0x0001;
+    public const uint LlmhfLowerIlInjected = 0x0002;
     public const int WmHotkey = 0x0312;
     public const uint KeyeventfKeyup = 0x0002;
     public const uint MouseeventfLeftDown = 0x0002;
     public const uint MouseeventfLeftUp = 0x0004;
     public const uint MouseeventfRightDown = 0x0008;
     public const uint MouseeventfRightUp = 0x0010;
+    public const uint MouseeventfMiddleUp = 0x0040;
     public const uint MouseeventfMove = 0x0001;
     public const uint MouseeventfAbsolute = 0x8000;
     public const uint MouseeventfVirtualDesk = 0x4000;
@@ -112,6 +123,21 @@ internal static class WinApi
 
     [DllImport("user32.dll")]
     public static extern bool SetCursorPos(int x, int y);
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct Rect
+    {
+        public int Left;
+        public int Top;
+        public int Right;
+        public int Bottom;
+    }
+
+    [DllImport("user32.dll", EntryPoint = "ClipCursor")]
+    public static extern bool ClipCursorRect(ref Rect lpRect);
+
+    [DllImport("user32.dll", EntryPoint = "ClipCursor")]
+    public static extern bool ClipCursorRelease(IntPtr lpRect);
 
     [DllImport("user32.dll")]
     public static extern uint SendInput(uint nInputs, Input[] pInputs, int cbSize);

@@ -13,6 +13,7 @@ internal sealed partial class MainForm : Form
     private readonly SettingsService _settings = new();
     private readonly Localization _loc = new();
     private readonly InputService _input = new();
+    private readonly MouseGuard _mouse;
     private readonly HotkeyService _hotkeys = new();
     private readonly MacroRunner _macros;
     private readonly AutoClickerController _autoClicker;
@@ -71,7 +72,9 @@ internal sealed partial class MainForm : Form
 
     public MainForm()
     {
-        _macros = new MacroRunner(_settings, _input);
+        _mouse = new MouseGuard(_input);
+        _input.Guard = _mouse;
+        _macros = new MacroRunner(_settings, _input, _mouse);
         _autoClicker = new AutoClickerController(_settings, _input);
         _autoCast = new AutoCastController(_settings, _input);
         _speedBoost = new SpeedBoostService(_settings);
@@ -133,6 +136,7 @@ internal sealed partial class MainForm : Form
         ShowPage("play");
 
         _hotkeys.Attach(this);
+        _mouse.Attach(this);
         _autoClicker.AttachRawKeys(_hotkeys);
         Load += (_, _) =>
         {
@@ -156,6 +160,7 @@ internal sealed partial class MainForm : Form
             SaveWindowBounds();
             _settings.Save();
             _hotkeys.Dispose();
+            _mouse.Dispose();
             _autoClicker.Dispose();
             _autoCast.Dispose();
             _speedBoost.Dispose();

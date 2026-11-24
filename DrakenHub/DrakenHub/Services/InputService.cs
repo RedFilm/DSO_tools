@@ -4,6 +4,11 @@ namespace DrakenHub.Services;
 
 internal sealed class InputService
 {
+    private const uint PlaceFlags =
+        WinApi.MouseeventfMove | WinApi.MouseeventfAbsolute | WinApi.MouseeventfVirtualDesk;
+
+    public MouseGuard? Guard { get; set; }
+
     public Point GetCursorPosition()
     {
         WinApi.GetCursorPos(out var p);
@@ -14,35 +19,34 @@ internal sealed class InputService
 
     public void MoveTo(Point p) => MoveTo(p.X, p.Y);
 
-    public void LeftClick(int x, int y, int settleMs = 5, int holdMs = 25)
+    /// <summary>
+    /// Return the cursor after a macro. The clip still confines it to the last
+    /// click, so it has to come off first. The move is injected: the guard is
+    /// still dropping physical moves and would cancel a plain SetCursorPos.
+    /// </summary>
+    public void Restore(Point p)
     {
-        MoveTo(x, y);
-        Thread.Sleep(Math.Max(1, settleMs));
-        SendMouse(WinApi.MouseeventfLeftDown);
-        Thread.Sleep(Math.Max(5, holdMs));
-        SendMouse(WinApi.MouseeventfLeftUp);
+        Guard?.Unpin();
+        SendMouseAbsolute(p.X, p.Y, PlaceFlags);
     }
 
+    public void LeftClick(int x, int y, int settleMs = 5, int holdMs = 25)
+        => ClickAt(x, y, WinApi.MouseeventfLeftDown, WinApi.MouseeventfLeftUp, settleMs, holdMs);
+
     public void RightClick(int x, int y, int settleMs = 5, int holdMs = 25)
-    {
-        MoveTo(x, y);
-        Thread.Sleep(Math.Max(1, settleMs));
-        SendMouse(WinApi.MouseeventfRightDown);
-        Thread.Sleep(Math.Max(5, holdMs));
-        SendMouse(WinApi.MouseeventfRightUp);
-    }
+        => ClickAt(x, y, WinApi.MouseeventfRightDown, WinApi.MouseeventfRightUp, settleMs, holdMs);
 
     public void DoubleClick(int x, int y, int settleMs = 5, int gapMs = 45)
     {
-        MoveTo(x, y);
-        Thread.Sleep(Math.Max(1, settleMs));
-        SendMouse(WinApi.MouseeventfLeftDown);
-        Thread.Sleep(25);
-        SendMouse(WinApi.MouseeventfLeftUp);
+        ClickAt(x, y, WinApi.MouseeventfLeftDown, WinApi.MouseeventfLeftUp, settleMs, 25);
         Thread.Sleep(Math.Max(20, gapMs));
-        SendMouse(WinApi.MouseeventfLeftDown);
-        Thread.Sleep(25);
-        SendMouse(WinApi.MouseeventfLeftUp);
+        ClickAt(x, y, WinApi.MouseeventfLeftDown, WinApi.MouseeventfLeftUp, 1, 25);
+    }
+
+    public void ReleaseButton(uint upFlag)
+    {
+        var p = GetCursorPosition();
+        SendMouseAbsolute(p.X, p.Y, PlaceFlags | upFlag);
     }
 
     /// <summary>
@@ -51,8 +55,8 @@ internal sealed class InputService
     /// </summary>
     public void LeftClickReliable(int x, int y)
     {
-        // 1) Desktop cursor
-        WinApi.SetCursorPos(x, y);
+        // 1) Desktop cursor, pinned while a macro owns the mouse
+        Place(x, y);
         Thread.Sleep(30);
 
         // 2) Absolute SendInput move (games that ignore SetCursorPos alone)
@@ -99,6 +103,30 @@ internal sealed class InputService
         }
     }
 
+    /// <summary>
+    /// Move, then click with the coordinates inside the event. A physical nudge
+    /// between the move and the button cannot land the click somewhere else.
+    /// </summary>
+    private void ClickAt(int x, int y, uint downFlag, uint upFlag, int settleMs, int holdMs)
+    {
+        Place(x, y);
+        Thread.Sleep(Math.Max(1, settleMs));
+        Place(x, y);
+        SendMouseAbsolute(x, y, PlaceFlags | downFlag);
+        Thread.Sleep(Math.Max(5, holdMs));
+        Place(x, y);
+        SendMouseAbsolute(x, y, PlaceFlags | upFlag);
+    }
+
+    private void Place(int x, int y)
+    {
+        MoveTo(x, y);
+        Guard?.Pin(x, y);
+        var now = GetCursorPosition();
+        if (now.X != x || now.Y != y)
+            MoveTo(x, y);
+    }
+
     private static void SendMouseAbsolute(int screenX, int screenY, uint flags)
     {
         var vs = SystemInformation.VirtualScreen;
@@ -113,23 +141,6 @@ internal sealed class InputService
                 {
                     Dx = nx,
                     Dy = ny,
-                    DwFlags = flags,
-                    DwExtraInfo = IntPtr.Zero
-                }
-            }
-        };
-        WinApi.SendInput(1, [input], System.Runtime.InteropServices.Marshal.SizeOf<WinApi.Input>());
-    }
-
-    private static void SendMouse(uint flags)
-    {
-        var input = new WinApi.Input
-        {
-            Type = WinApi.InputMouse,
-            U = new WinApi.InputUnion
-            {
-                Mi = new WinApi.MouseInput
-                {
                     DwFlags = flags,
                     DwExtraInfo = IntPtr.Zero
                 }
