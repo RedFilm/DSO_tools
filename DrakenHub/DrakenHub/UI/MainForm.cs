@@ -718,8 +718,6 @@ internal sealed partial class MainForm : Form
                 if (Same(s.AutoCast.Rows[i].SkillHotkey, "ac.skill:" + i)) return true;
             }
         }
-        if (Same(s.WindowHotkeys.HideShow, "win.hide")) return true;
-        if (Same(s.WindowHotkeys.Exit, "win.exit")) return true;
         if (Same(s.WindowHotkeys.EmergencyStop, "win.stop")) return true;
         if (Same(s.AutoClicker.LeftHotkey, "aclick.left")) return true;
         if (Same(s.AutoClicker.RightHotkey, "aclick.right")) return true;
@@ -1109,8 +1107,6 @@ internal sealed partial class MainForm : Form
                 failed.Add($"{id} ({KeyNames.Display(keyName)})");
         }
 
-        Reg("win.hide", s.WindowHotkeys.HideShow, ToggleVisible);
-        Reg("win.exit", s.WindowHotkeys.Exit, () => BeginInvoke(Close));
         Reg("win.stop", s.WindowHotkeys.EmergencyStop, () =>
         {
             _macros.EmergencyStop();

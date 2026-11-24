@@ -30,8 +30,6 @@ internal static class BindingMapCollector
             });
         }
 
-        Add("win.hide", "bind.group.window", "hide", s.WindowHotkeys.HideShow, v => s.WindowHotkeys.HideShow = v);
-        Add("win.exit", "bind.group.window", "exit", s.WindowHotkeys.Exit, v => s.WindowHotkeys.Exit = v);
         Add("win.stop", "bind.group.window", "stop", s.WindowHotkeys.EmergencyStop, v => s.WindowHotkeys.EmergencyStop = v);
 
         Add("sell.all", "bind.group.sell", "sell.all", s.Inventory.SellAllHotkey, v => s.Inventory.SellAllHotkey = v);

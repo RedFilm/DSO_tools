@@ -288,19 +288,6 @@ internal sealed partial class MainForm
         langInner.Controls.Add(lang);
         UiFactory.Add(stack, UiFactory.Section(_loc.T("language"), langInner, out var langTitle));
 
-        var gameInner = UiFactory.VStack();
-        var titleLabel = UiFactory.Lbl(_loc.T("gameWindowTitle"));
-        var titleBox = UiFactory.Tb(s.GameWindowTitleContains);
-        titleBox.Leave += (_, _) =>
-        {
-            s.GameWindowTitleContains = titleBox.Text.Trim();
-            Persist(hotkeys: false);
-        };
-        var hint = UiFactory.Lbl(_loc.T("gameWindowHint"), true);
-        gameInner.Controls.Add(UiFactory.FieldRow(titleLabel, titleBox, 180));
-        gameInner.Controls.Add(hint);
-        UiFactory.Add(stack, UiFactory.Section(_loc.T("gameWindow"), gameInner, out var gameTitle));
-
         var profileInner = UiFactory.VStack();
         var exportBtn = UiFactory.Btn(_loc.T("export"), BtnKind.Neutral);
         var importBtn = UiFactory.Btn(_loc.T("import"), BtnKind.Neutral);
@@ -343,23 +330,14 @@ internal sealed partial class MainForm
         UiFactory.Add(stack, UiFactory.Section(_loc.T("profile"), profileInner, out var profileTitle));
 
         var hotInner = UiFactory.VStack();
-        var hide = new SettingRow(SettingRowKind.Hotkey, _loc.T("hide"), "");
-        BindHotkeyRow(hide, () => s.WindowHotkeys.HideShow, v => s.WindowHotkeys.HideShow = v, "win.hide", "hide");
-        var exit = new SettingRow(SettingRowKind.Hotkey, _loc.T("exit"), "");
-        BindHotkeyRow(exit, () => s.WindowHotkeys.Exit, v => s.WindowHotkeys.Exit = v, "win.exit", "exit");
         var stop = new SettingRow(SettingRowKind.Hotkey, _loc.T("stop"), "");
         BindHotkeyRow(stop, () => s.WindowHotkeys.EmergencyStop, v => s.WindowHotkeys.EmergencyStop = v, "win.stop", "stop");
-        hotInner.Controls.Add(hide);
-        hotInner.Controls.Add(exit);
         hotInner.Controls.Add(stop);
         UiFactory.Add(stack, UiFactory.Section(_loc.T("winHotkeys"), hotInner, out var hotTitle));
 
         _refreshAllLabels += () =>
         {
             langTitle.Text = _loc.T("language");
-            gameTitle.Text = _loc.T("gameWindow");
-            titleLabel.Text = _loc.T("gameWindowTitle");
-            hint.Text = _loc.T("gameWindowHint");
             profileTitle.Text = _loc.T("profile");
             hotTitle.Text = _loc.T("winHotkeys");
             exportBtn.Text = _loc.T("export");
